@@ -1,0 +1,53 @@
+[log]
+level = "info"
+
+[manifest]
+url                = "opensteamtool"
+timeout_resolve_ms = 5000
+timeout_connect_ms = 5000
+timeout_send_ms    = 10000
+timeout_recv_ms    = 10000
+
+[steamless]
+# Optional fallback: unpack SteamStub/DRM in game exes before launch (Steamless.CLI.exe + Plugins\ beside steam.exe).
+enabled         = false
+cli_exe         = "Steamless.CLI.exe"
+pre_delay_ms    = 750
+recursive_scan  = true
+quiet           = true
+cli_timeout_ms  = 120000
+pics_timeout_ms = 60000
+log_file        = "OST.logs"
+
+[steamstub]
+# Optional fallback: inject external steam_stubbed.dll into x64 game processes at launch.
+enabled = false
+dll     = "steam_stubbed.dll"
+
+[steamstub_builtin]
+# Primary path (OpenSteamTool 1.4.8): forge AppOwnership tickets from Steam ConfigStore — no steam_stubbed.dll needed.
+enabled = true
+
+[[encrypted_app_ticket]]
+# Halimbawa: Larong A
+app_id = 1111111
+account_steamid = "76561198000000001"
+ticket = "S0VZLUExLUtVTldBUklORy1CQVNFNjQtUEFTVEU="
+
+[[encrypted_app_ticket]]
+# Halimbawa: Larong B (ibang App ID; ticket/Steam ID mula sa parehong o ibang account — dapat tugma per ticket)
+app_id = 2222222
+account_steamid = "76561198000000002"
+ticket = "S0VZLUUyLUtVTldBUklORy1CQVNFNjQtUEFTVEU="
+
+[[encrypted_app_ticket]]
+# Halimbawa: Larong C — puwede ring mahaba / multi-line ang ticket:
+# ticket = '''
+# CAIQ...mahabangBase64...
+# '''
+app_id = 3333333
+account_steamid = "76561198000000003"
+ticket = '''
+S0VZLUUzLUtVTldBUklORy1CQVNFNjQt
+UEFTVEUtTVVMVElMSU5F
+'''
