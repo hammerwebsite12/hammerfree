@@ -207,16 +207,50 @@ try {
     $unPath  = Join-Path $InstallDir 'uninstall.ps1'
 
     Write-Host 'Creating Desktop shortcut...' -ForegroundColor Green
-    $desktop = [Environment]::GetFolderPath('Desktop')
-    if ([string]::IsNullOrEmpty($desktop)) { $desktop = Join-Path $env:USERPROFILE 'Desktop' }
-    $lnk = Join-Path $desktop "$AppName.lnk"
-    $wsh = New-Object -ComObject WScript.Shell
-    $sc  = $wsh.CreateShortcut($lnk)
-    $sc.TargetPath       = $exePath
-    $sc.WorkingDirectory = $InstallDir
-    $sc.IconLocation     = "$exePath,0"
-    $sc.Description      = $AppName
-    $sc.Save()
+    # Some PCs redirect Desktop to a broken OneDrive/OneNote path. Prefer a
+    # writable folder and never fail the whole install over a shortcut.
+    function Get-WritableDesktop {
+        $candidates = @(
+            [Environment]::GetFolderPath('Desktop'),
+            (Join-Path $env:USERPROFILE 'Desktop'),
+            [Environment]::GetFolderPath('CommonDesktopDirectory'),
+            (Join-Path $env:PUBLIC 'Desktop')
+        ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique
+
+        foreach ($dir in $candidates) {
+            try {
+                if (-not (Test-Path -LiteralPath $dir)) {
+                    New-Item -ItemType Directory -Path $dir -Force -ErrorAction Stop | Out-Null
+                }
+                $probe = Join-Path $dir ('.qp_write_test_' + [Guid]::NewGuid().ToString('N'))
+                [IO.File]::WriteAllText($probe, 'ok')
+                Remove-Item -LiteralPath $probe -Force -ErrorAction SilentlyContinue
+                return $dir
+            } catch {
+                continue
+            }
+        }
+        return $null
+    }
+
+    $lnk = $null
+    try {
+        $desktop = Get-WritableDesktop
+        if (-not $desktop) { throw 'No writable Desktop folder found.' }
+        $lnk = Join-Path $desktop "$AppName.lnk"
+        $wsh = New-Object -ComObject WScript.Shell
+        $sc  = $wsh.CreateShortcut($lnk)
+        $sc.TargetPath       = $exePath
+        $sc.WorkingDirectory = $InstallDir
+        $sc.IconLocation     = "$exePath,0"
+        $sc.Description      = $AppName
+        $sc.Save()
+        Write-Host "  Shortcut: $lnk" -ForegroundColor DarkGray
+    } catch {
+        Write-Host "  Warning: could not create Desktop shortcut ($($_.Exception.Message))" -ForegroundColor Yellow
+        Write-Host "  App is still installed. Launch from: $exePath" -ForegroundColor Yellow
+        $lnk = $null
+    }
 
     Write-Host 'Registering uninstall entry...' -ForegroundColor Green
     $regKey = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\QuickPlay'
@@ -238,7 +272,11 @@ try {
     Write-Host '==============================================' -ForegroundColor Green
     Write-Host "  $AppName installed successfully!" -ForegroundColor Green
     Write-Host "  Location : $InstallDir" -ForegroundColor Green
-    Write-Host "  Shortcut : $lnk" -ForegroundColor Green
+    if ($lnk) {
+        Write-Host "  Shortcut : $lnk" -ForegroundColor Green
+    } else {
+        Write-Host "  Launch   : $exePath" -ForegroundColor Green
+    }
     Write-Host '==============================================' -ForegroundColor Green
 }
 catch {
