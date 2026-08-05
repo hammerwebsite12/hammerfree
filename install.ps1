@@ -15,11 +15,13 @@ $ProgressPreference     = 'Continue'
 $Branch      = 'quickplay'
 $Repo        = 'hammerwebsite12/hammerfree'
 $ReleaseTag  = 'quickplay-v2.0'
-$ScriptRev   = 'quickplay'
-$InstallUrl  = "https://cdn.jsdelivr.net/gh/$Repo@$ScriptRev/install.ps1"
+# Always use GitHub raw for self-elevation — jsDelivr can serve a stale cached v1 script.
+$InstallUrl  = "https://raw.githubusercontent.com/$Repo/$Branch/install.ps1"
 $InstallDir  = 'C:\Program Files (x86)\QuickPlay'
 $AppName     = 'QuickPlay'
 $Version     = '2.0'
+$MinZipBytes = 20MB
+$MaxZipBytes = 45MB
 $Publisher   = 'QuickPlay'
 $Parts       = @('QuickPlay.zip')
 $ExtraDirs   = @('cache', 'cache\covers')
@@ -43,7 +45,7 @@ if (-not $isAdmin) {
 }
 
 Write-Host '==============================================' -ForegroundColor Cyan
-Write-Host "  Installing $AppName" -ForegroundColor Cyan
+Write-Host "  Installing $AppName v$Version (dual-server)" -ForegroundColor Cyan
 Write-Host '==============================================' -ForegroundColor Cyan
 
 $work    = Join-Path $env:TEMP ('quickplay_' + [Guid]::NewGuid().ToString('N'))
@@ -176,6 +178,15 @@ try {
         Get-File (Get-PartUrls $p) $zipPath $label
     }
 
+    $zipInfo = Get-Item $zipPath
+    if ($zipInfo.Length -lt $MinZipBytes -or $zipInfo.Length -gt $MaxZipBytes) {
+        throw (
+            "Downloaded payload looks wrong ($([math]::Round($zipInfo.Length/1MB,1)) MB). "
+            + "Expected QuickPlay v2.0 (~26 MB). Try again or install from: "
+            + "https://github.com/$Repo/releases/tag/$ReleaseTag"
+        )
+    }
+
     Get-Process -Name 'QuickPlay' -ErrorAction SilentlyContinue |
         Stop-Process -Force -ErrorAction SilentlyContinue
 
@@ -205,6 +216,13 @@ try {
 
     $exePath = Join-Path $InstallDir 'QuickPlay.exe'
     $unPath  = Join-Path $InstallDir 'uninstall.ps1'
+    $exeInfo = Get-Item $exePath
+    if ($exeInfo.Length -lt $MinZipBytes -or $exeInfo.Length -gt $MaxZipBytes) {
+        throw (
+            "Installed QuickPlay.exe looks wrong ($([math]::Round($exeInfo.Length/1MB,1)) MB). "
+            + "Expected QuickPlay v2.0 dual-server (~26 MB)."
+        )
+    }
 
     Write-Host 'Creating Desktop shortcut...' -ForegroundColor Green
     # Some PCs redirect Desktop to a broken OneDrive/OneNote path. Prefer a
