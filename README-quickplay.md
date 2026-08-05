@@ -3,12 +3,6 @@
 Open **Windows PowerShell** (a UAC admin prompt will appear automatically) and paste:
 
 ```powershell
-irm https://cdn.jsdelivr.net/gh/hammerwebsite12/hammerfree@quickplay/install.ps1 | iex
-```
-
-Direct GitHub raw (if CDN is unavailable):
-
-```powershell
 irm https://raw.githubusercontent.com/hammerwebsite12/hammerfree/quickplay/install.ps1 | iex
 ```
 
