@@ -1,7 +1,7 @@
 <#
     QuickPlay 2.0 - One-paste installer
-    Usage (run in Windows PowerShell as Admin will be requested automatically):
-        irm https://raw.githubusercontent.com/hammerwebsite12/hammerfree/quickplay-installer-2.0/install.ps1 | iex
+    Usage (run in Windows PowerShell):
+        irm https://raw.githubusercontent.com/hammerwebsite12/hammerfree/quickplay/install.ps1 | iex
 #>
 
 $ErrorActionPreference = 'Stop'
@@ -10,10 +10,9 @@ $ProgressPreference     = 'Continue'
 
 # ---- Config -------------------------------------------------------------
 $Branch       = 'quickplay'
-$InstallerRef = 'quickplay-installer-2.0'
 $Repo         = 'hammerwebsite12/hammerfree'
 $ReleaseTag   = 'quickplay-v2.0'
-$InstallUrl   = "https://raw.githubusercontent.com/$Repo/$InstallerRef/install.ps1"
+$InstallUrl   = "https://raw.githubusercontent.com/$Repo/$Branch/install.ps1"
 $InstallDir  = 'C:\Program Files (x86)\QuickPlay'
 $AppName     = 'QuickPlay'
 $Version     = '2.0'
