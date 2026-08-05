@@ -14,12 +14,12 @@ $ProgressPreference     = 'Continue'
 # ---- Config -------------------------------------------------------------
 $Branch      = 'quickplay'
 $Repo        = 'hammerwebsite12/hammerfree'
-$ReleaseTag  = 'quickplay-v1.0'
+$ReleaseTag  = 'quickplay-v2.0'
 $ScriptRev   = 'quickplay'
 $InstallUrl  = "https://cdn.jsdelivr.net/gh/$Repo@$ScriptRev/install.ps1"
 $InstallDir  = 'C:\Program Files (x86)\QuickPlay'
 $AppName     = 'QuickPlay'
-$Version     = '1.1'
+$Version     = '2.0'
 $Publisher   = 'QuickPlay'
 $Parts       = @('QuickPlay.zip')
 $ExtraDirs   = @('cache', 'cache\covers')
@@ -75,7 +75,7 @@ function Get-RetryWaitSeconds([int]$attempt, [System.Net.WebException]$webEx) {
 function Get-FileCurl([string]$url, [string]$dest) {
     if (-not (Get-Command curl.exe -ErrorAction SilentlyContinue)) { return $false }
     Write-Host '   using curl fallback ...' -ForegroundColor DarkGray
-    & curl.exe -fL --retry 3 --retry-delay 5 -A 'QuickPlayInstaller/1.0' -o $dest $url 2>&1 | Out-Null
+    & curl.exe -fL --retry 3 --retry-delay 5 -A 'QuickPlayInstaller/2.0' -o $dest $url 2>&1 | Out-Null
     if ($LASTEXITCODE -ne 0) { return $false }
     return (Test-Path $dest) -and ((Get-Item $dest).Length -gt 0)
 }
@@ -90,7 +90,7 @@ function Get-File($urls, $dest, $label) {
             $resp = $null; $rs = $null; $fs = $null
             try {
                 $req = [System.Net.HttpWebRequest]::Create($url)
-                $req.UserAgent        = 'QuickPlayInstaller/1.0'
+                $req.UserAgent        = 'QuickPlayInstaller/2.0'
                 $req.Accept           = 'application/octet-stream,*/*'
                 $req.Timeout          = 30000
                 $req.ReadWriteTimeout = 120000
