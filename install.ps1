@@ -180,11 +180,8 @@ try {
 
     $zipInfo = Get-Item $zipPath
     if ($zipInfo.Length -lt $MinZipBytes -or $zipInfo.Length -gt $MaxZipBytes) {
-        throw (
-            "Downloaded payload looks wrong ($([math]::Round($zipInfo.Length/1MB,1)) MB). "
-            + "Expected QuickPlay v2.0 (~26 MB). Try again or install from: "
-            + "https://github.com/$Repo/releases/tag/$ReleaseTag"
-        )
+        $zipMb = [math]::Round($zipInfo.Length / 1MB, 1)
+        throw "Downloaded payload looks wrong ($zipMb MB). Expected QuickPlay v2.0 (~26 MB). Try again or install from: https://github.com/$Repo/releases/tag/$ReleaseTag"
     }
 
     Get-Process -Name 'QuickPlay' -ErrorAction SilentlyContinue |
@@ -218,10 +215,8 @@ try {
     $unPath  = Join-Path $InstallDir 'uninstall.ps1'
     $exeInfo = Get-Item $exePath
     if ($exeInfo.Length -lt $MinZipBytes -or $exeInfo.Length -gt $MaxZipBytes) {
-        throw (
-            "Installed QuickPlay.exe looks wrong ($([math]::Round($exeInfo.Length/1MB,1)) MB). "
-            + "Expected QuickPlay v2.0 dual-server (~26 MB)."
-        )
+        $exeMb = [math]::Round($exeInfo.Length / 1MB, 1)
+        throw "Installed QuickPlay.exe looks wrong ($exeMb MB). Expected QuickPlay v2.0 dual-server (~26 MB)."
     }
 
     Write-Host 'Creating Desktop shortcut...' -ForegroundColor Green
