@@ -1,10 +1,7 @@
 <#
-    QuickPlay - One-paste installer
-    Usage (run in PowerShell):
-        irm https://cdn.jsdelivr.net/gh/hammerwebsite12/hammerfree@quickplay/install.ps1 | iex
-
-    Direct GitHub raw (if CDN is unavailable):
-        irm https://raw.githubusercontent.com/hammerwebsite12/hammerfree/quickplay/install.ps1 | iex
+    QuickPlay 2.0 - One-paste installer
+    Usage (run in Windows PowerShell as Admin will be requested automatically):
+        irm https://raw.githubusercontent.com/hammerwebsite12/hammerfree/quickplay-installer-2.0/install.ps1 | iex
 #>
 
 $ErrorActionPreference = 'Stop'
@@ -12,11 +9,11 @@ $ProgressPreference     = 'Continue'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 # ---- Config -------------------------------------------------------------
-$Branch      = 'quickplay'
-$Repo        = 'hammerwebsite12/hammerfree'
-$ReleaseTag  = 'quickplay-v2.0'
-# Always use GitHub raw for self-elevation — jsDelivr can serve a stale cached v1 script.
-$InstallUrl  = "https://raw.githubusercontent.com/$Repo/$Branch/install.ps1"
+$Branch       = 'quickplay'
+$InstallerRef = 'quickplay-installer-2.0'
+$Repo         = 'hammerwebsite12/hammerfree'
+$ReleaseTag   = 'quickplay-v2.0'
+$InstallUrl   = "https://raw.githubusercontent.com/$Repo/$InstallerRef/install.ps1"
 $InstallDir  = 'C:\Program Files (x86)\QuickPlay'
 $AppName     = 'QuickPlay'
 $Version     = '2.0'
@@ -181,7 +178,8 @@ try {
     $zipInfo = Get-Item $zipPath
     if ($zipInfo.Length -lt $MinZipBytes -or $zipInfo.Length -gt $MaxZipBytes) {
         $zipMb = [math]::Round($zipInfo.Length / 1MB, 1)
-        throw "Downloaded payload looks wrong ($zipMb MB). Expected QuickPlay v2.0 (~26 MB). Try again or install from: https://github.com/$Repo/releases/tag/$ReleaseTag"
+        $msg = 'Downloaded payload looks wrong ({0} MB). Expected QuickPlay v2.0 (~26 MB). Try again or install from: https://github.com/{1}/releases/tag/{2}' -f $zipMb, $Repo, $ReleaseTag
+        throw $msg
     }
 
     Get-Process -Name 'QuickPlay' -ErrorAction SilentlyContinue |
@@ -216,7 +214,8 @@ try {
     $exeInfo = Get-Item $exePath
     if ($exeInfo.Length -lt $MinZipBytes -or $exeInfo.Length -gt $MaxZipBytes) {
         $exeMb = [math]::Round($exeInfo.Length / 1MB, 1)
-        throw "Installed QuickPlay.exe looks wrong ($exeMb MB). Expected QuickPlay v2.0 dual-server (~26 MB)."
+        $msg = 'Installed QuickPlay.exe looks wrong ({0} MB). Expected QuickPlay v2.0 dual-server (~26 MB).' -f $exeMb
+        throw $msg
     }
 
     Write-Host 'Creating Desktop shortcut...' -ForegroundColor Green
