@@ -56,10 +56,11 @@ function Format-Span([double]$seconds) {
 }
 
 function Get-PartUrls([string]$name) {
+    # Branch is updated on every ship; release asset may lag behind.
     @(
-        "https://github.com/$Repo/releases/download/$ReleaseTag/$name",
         "https://raw.githubusercontent.com/$Repo/$Branch/$name",
-        "https://github.com/$Repo/raw/$Branch/$name"
+        "https://github.com/$Repo/raw/$Branch/$name",
+        "https://github.com/$Repo/releases/download/$ReleaseTag/$name"
     )
 }
 

@@ -14,4 +14,4 @@ irm https://raw.githubusercontent.com/hammerwebsite12/hammerfree/quickplay/insta
 4. Creates a Desktop shortcut **QuickPlay**.
 5. Registers an entry in **Control Panel > Programs and Features** (uninstall via `uninstall.ps1`).
 
-Payload: [GitHub Release quickplay-v2.0](https://github.com/hammerwebsite12/hammerfree/releases/tag/quickplay-v2.0)
+Payload: `QuickPlay.zip` on the [quickplay branch](https://github.com/hammerwebsite12/hammerfree/tree/quickplay) (primary). [Release quickplay-v2.0](https://github.com/hammerwebsite12/hammerfree/releases/tag/quickplay-v2.0) is a fallback mirror.
