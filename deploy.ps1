@@ -1,4 +1,4 @@
-# Publish QuickPlay 2.3 installer to hammerwebsite12/hammerfree (quickplay branch)
+# Publish QuickPlay 2.3.1 installer to hammerwebsite12/hammerfree (quickplay branch)
 # Requires: gh auth login as an account with push access to hammerwebsite12/hammerfree
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
@@ -13,15 +13,15 @@ $token = gh auth token
 git remote set-url origin "https://x-access-token:${token}@github.com/hammerwebsite12/hammerfree.git"
 git push origin quickplay
 
-Write-Host 'Creating GitHub release quickplay-v2.3...' -ForegroundColor Cyan
-gh release view quickplay-v2.3 --repo hammerwebsite12/hammerfree 2>$null
+Write-Host 'Creating GitHub release quickplay-v2.3.1...' -ForegroundColor Cyan
+gh release view quickplay-v2.3.1 --repo hammerwebsite12/hammerfree 2>$null
 if ($LASTEXITCODE -eq 0) {
-    gh release upload quickplay-v2.3 QuickPlay.zip --repo hammerwebsite12/hammerfree --clobber
+    gh release upload quickplay-v2.3.1 QuickPlay.zip --repo hammerwebsite12/hammerfree --clobber
 } else {
-    gh release create quickplay-v2.3 QuickPlay.zip `
+    gh release create quickplay-v2.3.1 QuickPlay.zip `
         --repo hammerwebsite12/hammerfree `
-        --title "QuickPlay v2.3" `
-        --notes "QuickPlay 2.3 dual-server build (Server 1 + Server 2). Offline library cover cache. PyArmor-protected."
+        --title "QuickPlay v2.3.1" `
+        --notes "QuickPlay 2.3.1 dual-server build. Offline library cover cache. Stops shipping store dev docs in runtime extract. PyArmor-protected."
 }
 
 Write-Host 'Done. Users can install with:' -ForegroundColor Green
