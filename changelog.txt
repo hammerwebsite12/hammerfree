@@ -1,0 +1,114 @@
+QuickPlay Changelog
+===================
+
+v2.7.1 — 2026-08-15
+--------------------
+- Worker TLS guard: only trusted *.hs2424.workers.dev endpoints are allowed
+- Security hardening for download signing and gate resolution
+- Neutral gate API naming in the client (resolve_gate)
+- PyArmor-protected build
+
+v2.6.7 — 2026-08-12
+--------------------
+- Server 2 catalog choice is saved and kept after restart (no longer forced back to Server 1)
+- Show verification page: window opens on-screen, centered, and stays on top when enabled
+- Default Server 2 downloads: verification runs hidden off-screen with no popup
+- Download & verification logs are always visible on the Downloads tab
+- Fixed verification window stuck in the taskbar but not visible on screen
+- Fixed Server 2 downloads broken by 2.6.0–2.6.1 gate changes
+
+v2.6.6 — 2026-08-12
+--------------------
+- Show verification page uses HWND_TOPMOST so the window stays above QuickPlay
+- Gate window operations run on the main UI thread for reliable show/focus
+- Hidden mode: no taskbar entry, no on-screen flash when verification succeeds silently
+
+v2.6.5 — 2026-08-12
+--------------------
+- Stronger bring-to-front for the verification window (Win32 focus helpers)
+- Auto-switch to Server 2 only when Server 1 is unreachable at startup (not on every launch)
+
+v2.6.4 — 2026-08-12
+--------------------
+- Settings: single "Show verification page" option (removed separate logs toggle)
+- Verification window reveals immediately when a manual Cloudflare click is needed
+
+v2.6.3 — 2026-08-12
+--------------------
+- Removed "optimized" verification window mode; kept hidden default + optional full page
+- Polished Settings labels and descriptions (en / zh / es / tl)
+
+v2.6.2 — 2026-08-12
+--------------------
+- Reverted gate changes that caused download timeouts in 2.6.0–2.6.1
+- Restored reliable hidden background verification for Server 2
+
+v2.6.1 — 2026-08-12
+--------------------
+- Improved detection of Cloudflare Turnstile widget before revealing a small verify panel
+- Stealth CSS applied during page load so the upstream site is not briefly visible
+
+v2.6.0 — 2026-08-12
+--------------------
+- Server 2 gate loads off-screen first; only shows a small Cloudflare panel when a click is required
+- Tamper CSS applied before the verification window is shown (no flash of full site)
+
+v2.5.9 — 2026-08-11
+--------------------
+- Optimized verification popup sized to the Cloudflare checkbox row only
+
+v2.5.2 – v2.5.8 — 2026-08-11
+-----------------------------
+- Server 2 gate resolver: hidden WebView, countdown + Cloudflare Turnstile handling
+- Native OS mouse click for interactive "Verify you are human" challenges
+- Optional verification window settings (optimized / full debug modes; later simplified in 2.6.x)
+- Gate progress shown in download status (countdown, security check, handoff)
+
+v2.4.0 — 2026-08-10
+--------------------
+- Anker gate CDN capture fix (no more tiny HTML files mistaken for game archives)
+- Server 2 hidden from Settings UI variant; auto-failover disabled in that build
+
+v2.3.2 — 2026-08-10
+--------------------
+- Server 2 Turnstile gate bypass via in-app verification WebView
+- Worker returns client_resolve when browser verification is required
+
+v2.3.1 — 2026-08-11
+--------------------
+- Protected build no longer extracts loose Anker dev docs to AppData at runtime
+
+v2.3 — 2026-08-11
+-----------------
+- Offline library cover art cache (My Library thumbnails work without internet)
+- GET /api/covers/{entry_id} serves cached artwork locally
+
+v2.2 — 2026-08-10
+-----------------
+- PLAY picker and launcher support .bat files (launched as Administrator on Windows)
+- exe_scanner scans both .exe and .bat launch targets
+
+v2.1 — 2026-08-09
+-----------------
+- Server 2 extract: rename branded repack folders instead of deleting game files (Metaphor fix)
+- Version shown in Settings
+
+v2.0 — 2026-08-03
+-----------------
+- Dual catalog: Server 1 + Server 2 in one app
+- Server picker, auto-failover, Anker browse/search/details and downloads
+- Download queue, storage checks, library auto-heal, cover art resolution
+
+v1.1.0 — 2026-07-09
+-------------------
+- Licensed downloads with device fingerprint and registration code
+- Custom OS detection in license modal; one-time hardware snapshot
+- Cancel / pause / resume download UX improvements
+- Mandatory Administrator on start; Defender exclusion helpers
+- Themed native dialogs (admin required, single instance, Defender warning)
+
+v1.0.0
+------
+- QuickPlay rebrand from PlayZip Downloader
+- IDM-style multi-connection downloader with resume on restart
+- Bundled 7-Zip, i18n (en / zh / es / tl), Cloudflare Worker download signer
