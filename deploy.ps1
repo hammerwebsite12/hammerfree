@@ -21,7 +21,7 @@ if ($LASTEXITCODE -eq 0) {
     gh release create quickplay-v2.7.1 QuickPlay.zip `
         --repo hammerwebsite12/hammerfree `
         --title "QuickPlay v2.7.1" `
-        --notes "QuickPlay 2.7.1: Worker TLS guard (trusted workers.dev only), security hardening, gate verification improvements. PyArmor-protected build."
+        --notes "QuickPlay 2.7.1 (2026-08-21): Big Picture mode, download queue/cancel fixes, responsive dock UI. PyArmor-protected build."
 }
 
 Write-Host 'Done. Users can install with:' -ForegroundColor Green

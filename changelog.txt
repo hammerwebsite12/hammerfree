@@ -1,6 +1,14 @@
 QuickPlay Changelog
 ===================
 
+v2.7.1 — 2026-08-21 (installer payload refresh)
+----------------------------------------------
+- Big Picture library launcher (Steam Deck-style carousel + gamepad)
+- Smart download queue: pause frees slot; cancel clears persisted resume data
+- Responsive download dock and Pause/Resume/Cancel buttons
+- Body-based cancel API for reliable Windows path task IDs
+- PyArmor-protected build (latest dist/QuickPlay.exe)
+
 v2.7.1 — 2026-08-15
 --------------------
 - Worker TLS guard: only trusted *.hs2424.workers.dev endpoints are allowed
