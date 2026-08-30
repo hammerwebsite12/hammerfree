@@ -14,8 +14,12 @@ git remote set-url origin "https://x-access-token:${token}@github.com/hammerwebs
 git push origin quickplay
 
 Write-Host 'Creating GitHub release quickplay-v2.7.2...' -ForegroundColor Cyan
-gh release view quickplay-v2.7.2 --repo hammerwebsite12/hammerfree 2>$null
-if ($LASTEXITCODE -eq 0) {
+$prevEap = $ErrorActionPreference
+$ErrorActionPreference = 'Continue'
+gh release view quickplay-v2.7.2 --repo hammerwebsite12/hammerfree 2>$null | Out-Null
+$releaseExists = ($LASTEXITCODE -eq 0)
+$ErrorActionPreference = $prevEap
+if ($releaseExists) {
     gh release upload quickplay-v2.7.2 QuickPlay.zip --repo hammerwebsite12/hammerfree --clobber
 } else {
     gh release create quickplay-v2.7.2 QuickPlay.zip `
