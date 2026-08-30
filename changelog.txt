@@ -1,6 +1,12 @@
 QuickPlay Changelog
 ===================
 
+v2.7.3 — 2026-08-31 (installer payload refresh)
+----------------------------------------------
+- Windows Server / VPS fix: native dialogs fall back to MessageBoxW when tkinter is unavailable
+- Fixed license registration fallback crash (_message_box missing flags)
+- PyArmor-protected build (latest dist/QuickPlay.exe)
+
 v2.7.2 — 2026-08-31 (installer payload refresh)
 ----------------------------------------------
 - Server 2 browse/search parser fix for ankergames.net HTML redesign (uiPostCard cards)

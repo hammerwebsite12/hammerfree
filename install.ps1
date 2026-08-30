@@ -1,5 +1,5 @@
 <#
-    QuickPlay 2.7.2 - One-paste installer
+    QuickPlay 2.7.3 - One-paste installer
     Usage (run in Windows PowerShell):
         irm https://raw.githubusercontent.com/hammerwebsite12/hammerfree/quickplay/install.ps1 | iex
 #>
@@ -11,11 +11,11 @@ $ProgressPreference     = 'Continue'
 # ---- Config -------------------------------------------------------------
 $Branch       = 'quickplay'
 $Repo         = 'hammerwebsite12/hammerfree'
-$ReleaseTag   = 'quickplay-v2.7.2'
+$ReleaseTag   = 'quickplay-v2.7.3'
 $InstallUrl   = "https://raw.githubusercontent.com/$Repo/$Branch/install.ps1"
 $InstallDir  = 'C:\Program Files (x86)\QuickPlay'
 $AppName     = 'QuickPlay'
-$Version     = '2.7.2'
+$Version     = '2.7.3'
 $MinZipBytes = 20MB
 $MaxZipBytes = 45MB
 $Publisher   = 'QuickPlay'
@@ -74,7 +74,7 @@ function Get-RetryWaitSeconds([int]$attempt, [System.Net.WebException]$webEx) {
 function Get-FileCurl([string]$url, [string]$dest) {
     if (-not (Get-Command curl.exe -ErrorAction SilentlyContinue)) { return $false }
     Write-Host '   using curl fallback ...' -ForegroundColor DarkGray
-    & curl.exe -fL --retry 3 --retry-delay 5 -A 'QuickPlayInstaller/2.7.2' -o $dest $url 2>&1 | Out-Null
+    & curl.exe -fL --retry 3 --retry-delay 5 -A 'QuickPlayInstaller/2.7.3' -o $dest $url 2>&1 | Out-Null
     if ($LASTEXITCODE -ne 0) { return $false }
     return (Test-Path $dest) -and ((Get-Item $dest).Length -gt 0)
 }
@@ -89,7 +89,7 @@ function Get-File($urls, $dest, $label) {
             $resp = $null; $rs = $null; $fs = $null
             try {
                 $req = [System.Net.HttpWebRequest]::Create($url)
-                $req.UserAgent        = 'QuickPlayInstaller/2.7.2'
+                $req.UserAgent        = 'QuickPlayInstaller/2.7.3'
                 $req.Accept           = 'application/octet-stream,*/*'
                 $req.Timeout          = 30000
                 $req.ReadWriteTimeout = 120000
@@ -178,7 +178,7 @@ try {
     $zipInfo = Get-Item $zipPath
     if ($zipInfo.Length -lt $MinZipBytes -or $zipInfo.Length -gt $MaxZipBytes) {
         $zipMb = [math]::Round($zipInfo.Length / 1MB, 1)
-        $msg = 'Downloaded payload looks wrong ({0} MB). Expected QuickPlay v2.7.2 (~22 MB). Try again or install from: https://github.com/{1}/releases/tag/{2}' -f $zipMb, $Repo, $ReleaseTag
+        $msg = 'Downloaded payload looks wrong ({0} MB). Expected QuickPlay v2.7.3 (~22 MB). Try again or install from: https://github.com/{1}/releases/tag/{2}' -f $zipMb, $Repo, $ReleaseTag
         throw $msg
     }
 
@@ -214,7 +214,7 @@ try {
     $exeInfo = Get-Item $exePath
     if ($exeInfo.Length -lt $MinZipBytes -or $exeInfo.Length -gt $MaxZipBytes) {
         $exeMb = [math]::Round($exeInfo.Length / 1MB, 1)
-        $msg = 'Installed QuickPlay.exe looks wrong ({0} MB). Expected QuickPlay v2.7.2 (~22 MB).' -f $exeMb
+        $msg = 'Installed QuickPlay.exe looks wrong ({0} MB). Expected QuickPlay v2.7.3 (~22 MB).' -f $exeMb
         throw $msg
     }
 
