@@ -1,6 +1,12 @@
 QuickPlay Changelog
 ===================
 
+v2.7.2 — 2026-08-31 (installer payload refresh)
+----------------------------------------------
+- Server 2 browse/search parser fix for ankergames.net HTML redesign (uiPostCard cards)
+- Version bump to 2.7.2
+- PyArmor-protected build (latest dist/QuickPlay.exe)
+
 v2.7.1 — 2026-08-21 (installer payload refresh)
 ----------------------------------------------
 - Big Picture library launcher (Steam Deck-style carousel + gamepad)

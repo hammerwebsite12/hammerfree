@@ -9,9 +9,9 @@ irm https://raw.githubusercontent.com/hammerwebsite12/hammerfree/quickplay/insta
 ## What it does
 
 1. Requests Administrator rights (UAC).
-2. Downloads the QuickPlay payload (`QuickPlay.zip`, ~26 MB) — **QuickPlay 2.7.1** (Big Picture, download queue fixes, dual Server 1/2).
+2. Downloads the QuickPlay payload (`QuickPlay.zip`, ~22 MB) — **QuickPlay 2.7.2** (Server 2 browse/search fix, dual Server 1/2).
 3. Installs to `C:\Program Files (x86)\QuickPlay`.
 4. Creates a Desktop shortcut **QuickPlay**.
 5. Registers an entry in **Control Panel > Programs and Features** (uninstall via `uninstall.ps1`).
 
-Payload: `QuickPlay.zip` on the [quickplay branch](https://github.com/hammerwebsite12/hammerfree/tree/quickplay) (primary). [Release quickplay-v2.7.1](https://github.com/hammerwebsite12/hammerfree/releases/tag/quickplay-v2.7.1) is a fallback mirror.
+Payload: `QuickPlay.zip` on the [quickplay branch](https://github.com/hammerwebsite12/hammerfree/tree/quickplay) (primary). [Release quickplay-v2.7.2](https://github.com/hammerwebsite12/hammerfree/releases/tag/quickplay-v2.7.2) is a fallback mirror.
