@@ -1,6 +1,13 @@
 QuickPlay Changelog
 ===================
 
+v2.7.4 — 2026-08-31 (installer payload refresh)
+----------------------------------------------
+- First-run activation dialog now uses themed in-app modal with Copy Code / Copy Both
+- Fixes ugly MessageBox fallback when tkinter is not bundled in the EXE
+- Custom OS still shows device fingerprint on activation
+- PyArmor-protected build (latest dist/QuickPlay.exe)
+
 v2.7.3 — 2026-08-31 (installer payload refresh)
 ----------------------------------------------
 - Windows Server / VPS fix: native dialogs fall back to MessageBoxW when tkinter is unavailable
