@@ -1,4 +1,4 @@
-# Publish QuickPlay 2.7.4 installer to hammerwebsite12/hammerfree (quickplay branch)
+# Publish QuickPlay 2.7.5 installer to hammerwebsite12/hammerfree (quickplay branch)
 # Requires: gh auth login as an account with push access to hammerwebsite12/hammerfree
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
@@ -13,19 +13,19 @@ $token = gh auth token
 git remote set-url origin "https://x-access-token:${token}@github.com/hammerwebsite12/hammerfree.git"
 git push origin quickplay
 
-Write-Host 'Creating GitHub release quickplay-v2.7.4...' -ForegroundColor Cyan
+Write-Host 'Creating GitHub release quickplay-v2.7.5...' -ForegroundColor Cyan
 $prevEap = $ErrorActionPreference
 $ErrorActionPreference = 'Continue'
-gh release view quickplay-v2.7.4 --repo hammerwebsite12/hammerfree 2>$null | Out-Null
+gh release view quickplay-v2.7.5 --repo hammerwebsite12/hammerfree 2>$null | Out-Null
 $releaseExists = ($LASTEXITCODE -eq 0)
 $ErrorActionPreference = $prevEap
 if ($releaseExists) {
-    gh release upload quickplay-v2.7.4 QuickPlay.zip --repo hammerwebsite12/hammerfree --clobber
+    gh release upload quickplay-v2.7.5 QuickPlay.zip --repo hammerwebsite12/hammerfree --clobber
 } else {
-    gh release create quickplay-v2.7.4 QuickPlay.zip `
+    gh release create quickplay-v2.7.5 QuickPlay.zip `
         --repo hammerwebsite12/hammerfree `
-        --title "QuickPlay v2.7.4" `
-        --notes "QuickPlay 2.7.4 (2026-08-31): First-run activation uses themed in-app modal with Copy Code (no tkinter). PyArmor-protected build."
+        --title "QuickPlay v2.7.5" `
+        --notes "QuickPlay 2.7.5 (2026-09-16): Extract fix, game runtime installer, catalog idle retry. PyArmor-protected build."
 }
 
 Write-Host 'Done. Users can install with:' -ForegroundColor Green

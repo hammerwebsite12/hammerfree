@@ -20,6 +20,7 @@ QuickPlay 2.7.5 is the Windows desktop build (Server 1 / Server 2 catalogs, Work
 | **Android-style game detail** | Done | Download enabled from catalog; extras load in background (`game_details.py`, `web/app.js`). |
 | **Download residue cleanup** | Done | Safer partial/progress sweep; no delete of finished archives during active extract. |
 | **Protected EXE rebuild** | Done | `dist/QuickPlay.exe` via `build-protected.ps1`; `release.spec` includes `http_catalog`. |
+| **Public one-paste installer** | Done | `hammerwebsite12/hammerfree` branch `quickplay` — `install.ps1` v2.7.5, `QuickPlay.zip` from latest `dist/QuickPlay.exe`; release [quickplay-v2.7.5](https://github.com/hammerwebsite12/hammerfree/releases/tag/quickplay-v2.7.5). |
 
 ## Download resume (unchanged behavior, documented)
 
@@ -60,5 +61,12 @@ QuickPlay 2.7.5 is the Windows desktop build (Server 1 / Server 2 catalogs, Work
 | `game_details.py` | Server 1 detail HTML cleanup |
 | `release.spec` | `http_catalog` hidden import |
 | `dist/QuickPlay.exe` | Rebuilt protected binary |
+| `installer-publish/*` | Installer scripts bumped to 2.7.5 (mirrors public `quickplay` branch) |
+
+## Install command (end users)
+
+```powershell
+irm https://raw.githubusercontent.com/hammerwebsite12/hammerfree/quickplay/install.ps1 | iex
+```
 
 See also [AGENTS.md](AGENTS.md), [RELEASE_NOTES.md](RELEASE_NOTES.md).

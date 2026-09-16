@@ -1,23 +1,29 @@
 # QuickPlay Release Notes
 
-## v2.7.5 beta — September 16, 2026
+## v2.7.5 — September 16, 2026
 
-### Download performance
-- **In-place parallel download** — eight connections write directly into one `.part` file at the correct byte offsets; **no separate “Merging” phase** (less disk I/O, faster completion)
-- **Resume** — `.part.progress` JSON tracks per-connection bytes; legacy `.part.partN` chunks are migrated once on resume
+### Fixes & features (this release)
+- **Post-download extract** — finished archives are no longer deleted before 7-Zip runs (large downloads such as GTA SA)
+- **Game runtime installer** — VC++ 2008–2022 + DirectX June 2010 from Settings; progress via SSE
+- **Catalog after idle** — session renew, retry, and UI refresh when browse/search goes stale
+- **Server responsiveness** — download start and space-check run off the main event loop (`asyncio.to_thread`)
+- **Game detail** — download from catalog; extras load in the background
 
-### Download UX
-- **Refresh link** — button on the download dock and Downloads tab; fetches a new signed URL without deleting partial files
-- **Live resolve status** — UI shows steps such as contacting signer, preparing download page, trying mirror, rate-limit countdown
-- **Progress save fix (Windows)** — thread-safe `.progress` writes (fixes `WinError 32` during parallel download)
+### Download (unchanged from 2.7.x line)
+- In-place parallel download with `.part.progress` resume; **Refresh link** on the download dock
+- Thread-safe progress writes on Windows (`WinError 32` fix)
 
 ### App branding
-- Window title and top bar: **QuickPlay 2.7.5 beta**
-- Settings shows version `2.7.5-beta`
+- Window title: **QuickPlay 2.7.5** (`APP_VERSION = 2.7.5`)
 
-### Build
-- Rebuilt `dist/QuickPlay.exe` via `build.ps1`
-- Source branch: `quickplay-2.7.5-beta` on `hammerwebsite12/hammerfree`
+### Build & distribution
+- Rebuilt `dist/QuickPlay.exe` via `build-protected.ps1` (PyArmor on licensing modules)
+- Source backup: `quickplay-2.7.5-beta` on private [dvahana2424-web/playzipdl](https://github.com/dvahana2424-web/playzipdl)
+- Public installer: `quickplay` on [hammerwebsite12/hammerfree](https://github.com/hammerwebsite12/hammerfree) — tag **quickplay-v2.7.5**
+
+```powershell
+irm https://raw.githubusercontent.com/hammerwebsite12/hammerfree/quickplay/install.ps1 | iex
+```
 
 ---
 

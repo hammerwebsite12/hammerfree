@@ -1,6 +1,49 @@
 QuickPlay Changelog
 ===================
 
+v2.7.5 — 2026-09-16 (installer payload refresh)
+----------------------------------------------
+- Post-download extract fix: finished archives are no longer deleted before 7-Zip runs
+- Game runtime installer: VC++ 2008–2022 + DirectX June 2010 (Settings)
+- Stale browse/search after idle: catalog session renew + retry
+- Download API no longer blocks browse/redist while a download is starting
+- Android-style game detail extras load in the background
+- PyArmor-protected build (latest dist/QuickPlay.exe)
+
+v2.7.4 — 2026-08-31 (installer payload refresh)
+----------------------------------------------
+- First-run activation dialog now uses themed in-app modal with Copy Code / Copy Both
+- Fixes ugly MessageBox fallback when tkinter is not bundled in the EXE
+- Custom OS still shows device fingerprint on activation
+- PyArmor-protected build (latest dist/QuickPlay.exe)
+
+v2.7.3 — 2026-08-31 (installer payload refresh)
+----------------------------------------------
+- Windows Server / VPS fix: native dialogs fall back to MessageBoxW when tkinter is unavailable
+- Fixed license registration fallback crash (_message_box missing flags)
+- PyArmor-protected build (latest dist/QuickPlay.exe)
+
+v2.7.2 — 2026-08-31 (installer payload refresh)
+----------------------------------------------
+- Server 2 browse/search parser fix for ankergames.net HTML redesign (uiPostCard cards)
+- Version bump to 2.7.2
+- PyArmor-protected build (latest dist/QuickPlay.exe)
+
+v2.7.1 — 2026-08-21 (installer payload refresh)
+----------------------------------------------
+- Big Picture library launcher (Steam Deck-style carousel + gamepad)
+- Smart download queue: pause frees slot; cancel clears persisted resume data
+- Responsive download dock and Pause/Resume/Cancel buttons
+- Body-based cancel API for reliable Windows path task IDs
+- PyArmor-protected build (latest dist/QuickPlay.exe)
+
+v2.7.1 — 2026-08-15
+--------------------
+- Worker TLS guard: only trusted *.hs2424.workers.dev endpoints are allowed
+- Security hardening for download signing and gate resolution
+- Neutral gate API naming in the client (resolve_gate)
+- PyArmor-protected build
+
 v2.6.7 — 2026-08-12
 --------------------
 - Server 2 catalog choice is saved and kept after restart (no longer forced back to Server 1)
