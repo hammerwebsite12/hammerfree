@@ -249,6 +249,42 @@ async def api_get_settings():
     return get_settings().to_dict()
 
 
+@app.get("/api/redistributables/status")
+async def api_redist_status():
+    from redist_installer import redist_status
+
+    return redist_status()
+
+
+@app.get("/api/redistributables/packages")
+async def api_redist_packages():
+    from redist_installer import list_redist_packages, redist_status
+
+    return {
+        "packages": list_redist_packages(),
+        **{k: redist_status()[k] for k in ("available", "running", "finished")},
+    }
+
+
+@app.post("/api/redistributables/install")
+async def api_redist_install():
+    from redist_installer import redist_status, start_redist_install
+
+    def on_progress(payload: dict[str, Any]) -> None:
+        try:
+            _event_queue.put_nowait(("redist_progress", payload))
+        except queue.Full:
+            pass
+
+    def on_line_log(message: str) -> None:
+        get_logger().info(f"[Runtimes] {message}")
+
+    ok, msg = start_redist_install(on_progress, on_line_log=on_line_log)
+    if not ok:
+        raise HTTPException(status_code=409 if msg == "already_running" else 400, detail=msg)
+    return {"started": True, "status": redist_status()}
+
+
 @app.get("/api/gamepad/state")
 async def api_gamepad_state():
     from gamepad_input import get_latest_state
@@ -291,6 +327,12 @@ async def api_update_settings(body: SettingsUpdate):
         f"store={settings.store}"
     )
     return settings.to_dict()
+
+
+@app.post("/api/store/refresh-sessions")
+async def api_refresh_store_sessions():
+    get_store().invalidate_cached_clients()
+    return {"ok": True}
 
 
 @app.get("/api/browse")
@@ -407,11 +449,12 @@ async def api_rate_limit():
 
 @app.post("/api/downloads")
 async def api_start_download(body: DownloadRequest):
-    result = get_service().start_download(
+    result = await asyncio.to_thread(
+        get_service().start_download,
         body.game_id,
         body.title,
         body.image_url,
-        store_size_bytes=body.store_size_bytes,
+        body.store_size_bytes,
     )
     if not result.get("ok") and result.get("error") == "insufficient_disk_space":
         raise HTTPException(status_code=507, detail=result)
@@ -427,11 +470,12 @@ async def api_download_space_check(
 ):
     if not game_id.strip():
         raise HTTPException(400, "game_id is required")
-    return get_service().check_download_space(
+    return await asyncio.to_thread(
+        get_service().check_download_space,
         game_id.strip(),
         title,
         image_url,
-        store_size_bytes=store_size_bytes,
+        store_size_bytes,
     )
 
 

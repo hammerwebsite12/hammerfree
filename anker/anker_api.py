@@ -20,6 +20,8 @@ from urllib.parse import quote, unquote, urlparse
 
 import requests
 
+from http_catalog import CATALOG_TIMEOUT, is_transient_request_error, renew_session
+
 if TYPE_CHECKING:
     from download_logger import DownloadLogger
 
@@ -278,31 +280,60 @@ class AnkerGamesClient:
         if self._on_resolve_status:
             self._on_resolve_status(label, message)
 
+    def _session_headers(self) -> dict[str, str]:
+        return {
+            "User-Agent": USER_AGENT,
+            "Accept-Language": "en-US,en;q=0.9",
+        }
+
+    def _renew_session(self) -> None:
+        self.session = renew_session(self.session, self._session_headers())
+
     def _request_html(
         self,
         path: str,
         *,
         params: dict[str, str | int] | None = None,
-        timeout: float = 30,
+        timeout: float | tuple[float, float] = CATALOG_TIMEOUT,
     ) -> str:
         url = f"{self._base_url}{path}"
-        try:
-            response = self.session.get(
-                url,
-                params=params or {},
-                timeout=timeout,
-                headers={"Accept": "text/html,application/xhtml+xml"},
-            )
-        except requests.RequestException as exc:
+        last_error: Exception | None = None
+        for attempt in range(3):
+            try:
+                response = self.session.get(
+                    url,
+                    params=params or {},
+                    timeout=timeout,
+                    headers={
+                        "Accept": "text/html,application/xhtml+xml",
+                        "Connection": "close",
+                    },
+                )
+            except requests.RequestException as exc:
+                last_error = exc
+                if is_transient_request_error(exc) and attempt < 2:
+                    self._log(
+                        f"Anker connection stale — retrying ({attempt + 1}/3)...",
+                        "WARN",
+                    )
+                    self._renew_session()
+                    time.sleep(1.5 * (attempt + 1))
+                    continue
+                raise RuntimeError(
+                    "Hindi maabot ang AnkerGames. Subukan ulit mamaya."
+                ) from exc
+
+            if response.status_code >= 500:
+                raise RuntimeError(f"AnkerGames server error ({response.status_code}).")
+
+            response.raise_for_status()
+            return response.text
+
+        if last_error:
             raise RuntimeError(
                 "Hindi maabot ang AnkerGames. Subukan ulit mamaya."
-            ) from exc
-
-        if response.status_code >= 500:
-            raise RuntimeError(f"AnkerGames server error ({response.status_code}).")
-
-        response.raise_for_status()
-        return response.text
+            ) from last_error
+        raise RuntimeError("Hindi maabot ang AnkerGames. Subukan ulit mamaya.")
 
     @staticmethod
     def _decode_listing_attr(raw: str) -> dict | None:

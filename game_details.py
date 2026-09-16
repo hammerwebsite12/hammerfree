@@ -78,6 +78,63 @@ def _sanitize_description_html(raw: str) -> str:
     return raw.strip()
 
 
+# PlayZip article bodies often repeat site-wide install steps — not game descriptions.
+_PLAYZIP_BOILERPLATE_MARKERS = (
+    "how to download",
+    "click the download button",
+    "extract to current folder",
+    "right-click the .rar",
+    "double click it to run",
+    "missing .dll errors",
+    "_commonredist",
+    "winrar or 7-zip",
+)
+
+
+def _is_playzip_install_boilerplate(text: str) -> bool:
+    lower = html.unescape((text or "")).lower()
+    if not lower.strip():
+        return False
+    if "how to download" in lower and "click the download" in lower:
+        return True
+    hits = sum(1 for marker in _PLAYZIP_BOILERPLATE_MARKERS if marker in lower)
+    return hits >= 3
+
+
+def _strip_playzip_boilerplate_html(raw: str) -> str:
+    if not raw:
+        return ""
+    cleaned = raw
+    cleaned = re.sub(
+        r"(?is)<h[1-6][^>]*>\s*[^<]*how\s+to\s+download[^<]*</h[1-6]>.*?(?=<h[1-6]|$)",
+        "",
+        cleaned,
+    )
+    cleaned = re.sub(
+        r"(?is)<(?:div|section)[^>]*class=\"[^\"]*(?:download|guide|install)[^\"]*\"[^>]*>.*?</(?:div|section)>",
+        "",
+        cleaned,
+    )
+    cleaned = re.sub(
+        r"(?is)<ol[^>]*>.*?(?:download button|extract to current|\.rar file).*?</ol>",
+        "",
+        cleaned,
+    )
+    cleaned = re.sub(r"(?is)<ul[^>]*>.*?(?:download button|extract to current).*?</ul>", "", cleaned)
+    cleaned = _sanitize_description_html(cleaned)
+    plain = _strip_html(cleaned, max_len=8000)
+    if _is_playzip_install_boilerplate(plain):
+        return ""
+    return cleaned
+
+
+def _clean_playzip_plain_description(text: str) -> str:
+    text = html.unescape((text or "")).strip()
+    if not text or _is_playzip_install_boilerplate(text):
+        return ""
+    return text
+
+
 class GameDetailsService:
     def __init__(self, client: PlayZipClient, logger: DownloadLogger | None = None) -> None:
         self.client = client
@@ -151,7 +208,9 @@ class GameDetailsService:
             re.I,
         )
         if meta_m:
-            details.description = html.unescape(meta_m.group(1)).strip()
+            meta_desc = _clean_playzip_plain_description(meta_m.group(1))
+            if meta_desc:
+                details.description = meta_desc
 
         body_m = re.search(
             r'<div class="content_body"[^>]*>(.*?)</div>\s*<div class="content_right"',
@@ -159,11 +218,14 @@ class GameDetailsService:
             re.S,
         )
         if body_m:
-            body_html = body_m.group(1).strip()
-            details.description_html = _sanitize_description_html(body_html)
-            plain = _strip_html(body_html, max_len=2000)
-            if plain:
-                details.description = plain
+            body_html = _strip_playzip_boilerplate_html(body_m.group(1).strip())
+            if body_html:
+                details.description_html = body_html
+                plain = _strip_html(body_html, max_len=2000)
+                if plain and not _is_playzip_install_boilerplate(plain):
+                    details.description = plain
+            elif details.description and _is_playzip_install_boilerplate(details.description):
+                details.description = ""
 
         cap_m = re.search(
             r'class="capsule_div"[^>]*>.*?<img[^>]+src="([^"]+)"',
@@ -217,6 +279,11 @@ class GameDetailsService:
         short = (data.get("short_description") or "").strip()
         if short:
             details.description = short
+            # PlayZip page body is usually install steps; prefer Steam copy only.
+            if details.description_html and _is_playzip_install_boilerplate(
+                _strip_html(details.description_html, max_len=8000)
+            ):
+                details.description_html = ""
 
         release = data.get("release_date") or {}
         if isinstance(release, dict):

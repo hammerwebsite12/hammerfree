@@ -16,6 +16,8 @@ from urllib.parse import unquote, urlparse
 
 import requests
 
+from http_catalog import CATALOG_TIMEOUT, is_transient_request_error, renew_session
+
 if TYPE_CHECKING:
     from download_logger import DownloadLogger
 
@@ -129,33 +131,63 @@ class PlayZipClient:
     def _switch_mirror(self, base_url: str) -> None:
         self._base_url = base_url
 
+    def _session_headers(self) -> dict[str, str]:
+        return {
+            "User-Agent": USER_AGENT,
+            "Accept-Language": "en-US,en;q=0.9",
+        }
+
+    def _renew_session(self) -> None:
+        self.session = renew_session(self.session, self._session_headers())
+
     def _request(
         self,
         method: str,
         path: str,
         *,
-        timeout: float | tuple[float, float] = 30,
+        timeout: float | tuple[float, float] = CATALOG_TIMEOUT,
         **kwargs,
     ) -> requests.Response:
         last_error: Exception | None = None
+        headers = kwargs.pop("headers", None) or {}
+        headers.setdefault("Connection", "close")
+
         for mirror in MIRROR_SITES:
             url = f"{mirror}{path}"
             self._switch_mirror(mirror)
-            try:
-                response = self.session.request(method, url, timeout=timeout, **kwargs)
-            except requests.RequestException as exc:
-                last_error = exc
+            mirror_failed = False
+            for attempt in range(3):
+                try:
+                    response = self.session.request(
+                        method,
+                        url,
+                        timeout=timeout,
+                        headers=headers,
+                        **kwargs,
+                    )
+                except requests.RequestException as exc:
+                    last_error = exc
+                    if is_transient_request_error(exc) and attempt < 2:
+                        self._log(
+                            f"Store connection stale — retrying ({attempt + 1}/3)...",
+                            "WARN",
+                        )
+                        self._renew_session()
+                        time.sleep(1.5 * (attempt + 1))
+                        continue
+                    mirror_failed = True
+                    break
+
+                if response.status_code >= 500:
+                    last_error = RuntimeError(f"Server error {response.status_code}")
+                    mirror_failed = True
+                    break
+
+                return response
+
+            if mirror_failed:
                 self._log("Primary store unavailable, trying mirror...", "WARN")
                 self._notify_resolve_status("", "Store unreachable — trying mirror...")
-                continue
-
-            if response.status_code >= 500:
-                last_error = RuntimeError(f"Server error {response.status_code}")
-                self._log("Store mirror busy, trying next...", "WARN")
-                self._notify_resolve_status("", "Store busy — trying mirror...")
-                continue
-
-            return response
 
         if last_error:
             raise RuntimeError(

@@ -159,6 +159,14 @@
         <p class="setting-hint" id="defenderStatus"></p>
       </div>
 
+      <div class="setting-group" id="redistGroup">
+        <label class="setting-label" data-i18n="settings.redistLabel">Game runtime dependencies</label>
+        <p class="setting-hint" data-i18n="settings.redistHint">One-click install of official Microsoft Visual C++ (2008–2022) and DirectX June 2010 runtime. Helps fix missing DLL / D3DX errors in older and newer games. Requires internet; QuickPlay must run as Administrator.</p>
+        <button type="button" id="installRedistBtn" class="btn accent" data-i18n="settings.redistBtn">Install all runtimes</button>
+        <p class="setting-hint" id="redistStatus" aria-live="polite"></p>
+        <pre class="redist-log hidden" id="redistLog"></pre>
+      </div>
+
       <div class="setting-actions">
         <button id="saveSettingsBtn" class="btn accent" data-i18n="settings.save">Save Settings</button>
       </div>
@@ -207,20 +215,22 @@
         <div class="detail-hero-shade"></div>
       </div>
       <div class="detail-content">
+        <div class="detail-top-row">
+          <h1 id="detailTitle" class="detail-title"></h1>
+          <button id="detailDownload" class="btn accent detail-download-btn" data-i18n="detail.download">⬇ Download Game</button>
+        </div>
+        <div class="detail-actions-meta">
+          <span id="detailLibraryNote" class="detail-library-note hidden" data-i18n="detail.inLibrary">✓ Added already in Library</span>
+          <div class="detail-storage" id="detailStorage"></div>
+          <span id="detailSource" class="detail-source"></span>
+        </div>
         <div class="detail-loading hidden" id="detailLoading" data-i18n="detail.loading">Loading game info…</div>
-        <h1 id="detailTitle" class="detail-title"></h1>
         <div id="detailMeta" class="detail-meta"></div>
         <div id="detailTags" class="detail-tags"></div>
         <p id="detailDesc" class="detail-desc"></p>
         <div id="detailDescHtml" class="detail-desc-html"></div>
         <h3 class="detail-section-title hidden" id="screenshotsTitle" data-i18n="detail.screenshots">Screenshots</h3>
         <div id="detailScreenshots" class="detail-screenshots"></div>
-        <div class="detail-actions">
-          <button id="detailDownload" class="btn accent detail-download-btn" data-i18n="detail.download">⬇ Download Game</button>
-          <span id="detailLibraryNote" class="detail-library-note hidden" data-i18n="detail.inLibrary">✓ Added already in Library</span>
-          <div class="detail-storage" id="detailStorage"></div>
-          <span id="detailSource" class="detail-source"></span>
-        </div>
       </div>
     </div>
   </div>

@@ -1,104 +1,64 @@
 # QuickPlay Progress Report
 
 **Date:** September 16, 2026  
-**Version:** **2.7.5 beta** (`APP_VERSION = 2.7.5-beta`)  
-**Repo:** [hammerwebsite12/hammerfree](https://github.com/hammerwebsite12/hammerfree)  
+**Version:** **2.7.5** (`APP_VERSION = 2.7.5`, `APP_TITLE = QuickPlay 2.7.5`)  
+**Repo:** [dvahana2424-web/playzipdl](https://github.com/dvahana2424-web/playzipdl) (private)  
 **Branch:** `quickplay-2.7.5-beta`
 
 ## Summary
 
-QuickPlay 2.x ships dual-server catalogs (Server 1 / Server 2), licensed downloads via Cloudflare Workers, and a protected Windows EXE build. **2.7.5 beta** focuses on downloader performance and link refresh UX: parallel downloads assemble **in place** into a single `.part` file (no separate merge pass), plus a **Refresh link** control with step-by-step resolve status in the dock and Downloads tab.
+QuickPlay 2.7.5 is the Windows desktop build (Server 1 / Server 2 catalogs, Worker-backed downloads, protected EXE). This report covers the **September 16, 2026** session: game runtime installer, browse idle fixes, post-download extract bug fix, and UX polish.
 
-## 2.7.5 beta (2026-09-16)
+## 2.7.5 session (2026-09-16)
 
 | Area | Status | Notes |
 |------|--------|-------|
-| In-place multi-connection download | Done | `idm_downloader.py` — offset writes into one `.part`; `.part.progress` for resume |
-| Legacy chunk migration | Done | One-time import from `.part.partN` → `.part` on resume |
-| Progress file locking (Windows) | Done | Fixes `WinError 32` when multiple threads saved `.progress` |
-| Refresh download link | Done | `POST /api/downloads/{id}/refresh-link` — new URL, keep partials |
-| Live resolve status | Done | Signer / store / mirror steps pushed to task `status_message` |
-| App title + version | Done | `APP_TITLE` — window + top bar show **QuickPlay 2.7.5 beta** |
+| **Post-download extract bug** | Fixed | `_cleanup_part_files` was deleting the finished `.zip` right after 100% download (before 7-Zip ran). Affected all large downloads (e.g. GTA SA). Archives are kept until extract succeeds; cancel-only cleanup uses `remove_final=True`. |
+| **Game runtime installer** | Done | `redist_installer.py` — VC++ 2008–2022 + DirectX June 2010 offline redist; Settings UI + SSE `redist_progress`; logs to Downloads panel `[Runtimes]`. Fixed Microsoft CDN URLs (404s); `dxwebsetup` → offline `directx_Jun2010_redist.exe`; installer subprocess deadlock fix (`DEVNULL` + heartbeat). |
+| **Stale browse / search after idle** | Done | `http_catalog.py` — session renew + retry on transient errors; `Connection: close` on catalog GETs; `POST /api/store/refresh-sessions`; UI fetch timeout/retry; visibility + SSE reconnect refresh. |
+| **Download API blocking** | Done | `POST /api/downloads` and space-check run in `asyncio.to_thread` so browse/redist work cannot freeze the server. |
+| **Android-style game detail** | Done | Download enabled from catalog; extras load in background (`game_details.py`, `web/app.js`). |
+| **Download residue cleanup** | Done | Safer partial/progress sweep; no delete of finished archives during active extract. |
+| **Protected EXE rebuild** | Done | `dist/QuickPlay.exe` via `build-protected.ps1`; `release.spec` includes `http_catalog`. |
+
+## Download resume (unchanged behavior, documented)
+
+| Stage | Auto-resume on restart? |
+|-------|-------------------------|
+| In-progress download (`.part` / `.quickplay_downloads.json` in **download folder**) | **Yes** — fresh signed URL, resume bytes |
+| Wait queue | **Yes** |
+| Extract | **No full job** — zip is **not** deleted mid-extract after fix; failed extract keeps archive for manual retry |
 
 ## Completed (prior releases)
 
 | Area | Status | Notes |
 |------|--------|-------|
-| Dual-server catalog | Done | `store_manager.py` — Server 1 (PlayZip) + Server 2 (Anker) |
-| dl-resolver Worker | Done | `/sign`, `/license/check` — PlayZip download signing |
-| anker-resolver Worker | Done | `/license/check` — Server 2 license gate |
-| anker-dlresolver Worker | Done | `/resolve` — Server 2 CDN URL resolver |
-| Device fingerprint (client) | Done | `device_fingerprint.py` — 64-char hex SHA-256 |
-| Registration code (client) | Done | `hwid_obfuscation.py` + license modal |
-| Custom OS UI | Done | Fingerprint field + Copy Both in `web/app.js` |
-| Worker license gate | Done | `/sign` checks `.user` in `quickplayusr` repo |
-| Worker HW snapshot | Done | One-time write + Discord on first licensed sign |
-| Worker abuse protections | Done | Nonce replay, optional audit/rate-limit (see KV lite mode) |
-| **Worker KV lite mode** | Done | **2026-08-26** — avoids quota 500s on free tier |
-| Cancel download fix | Done | `_remove_task` + partial cleanup with `glob.escape` |
-| Pause/resume UX | Done | Confirm pause, optimistic UI, 32 KB chunks |
-| Themed native dialogs | Done | Admin required, single instance, Defender warning |
-| Mandatory admin on start | Done | Run as Admin / Exit every non-elevated launch |
-| Defender auto-exclusion | Done | On startup + manual steps if auto fails |
-| Hardware snapshot (client) | Done | `hardware_snapshot.py`, settings flag |
-| Protected EXE build | Done | `build-protected.ps1` / `build.ps1` → `dist/QuickPlay.exe` |
-| Seller activator tools | Done | Unified Activator / KeyGen (separate repos) |
-
-## Deployed
-
-| Service | URL | Account | Last redeploy |
-|---------|-----|---------|---------------|
-| dl-resolver | https://dl-resolver.hs2424.workers.dev | hanahsong2424@gmail.com | 2026-08-26 (KV lite mode) |
-| anker-resolver | https://anker-resolver.hs2424.workers.dev | hanahsong2424@gmail.com | 2026-08-26 |
-| anker-dlresolver | https://anker-dlresolver.hs2424.workers.dev | hanahsong2424@gmail.com | 2026-08-26 |
-| activateme-api | https://activateme-api.sheryltacipit02.workers.dev | sheryltacipit02@gmail.com | — |
-| QuickPlay EXE | `dist/QuickPlay.exe` (local build) | — | 2026-09-16 (2.7.5 beta) |
-
-**Wrangler account ID (hs2424):** `1f3d8591d5ce5b25bb355660031673b0`
-
-## Incident: KV quota → Worker 500 (2026-08-26)
-
-### Symptom
-
-- `GET /` on all Workers returned **200 OK**
-- Invalid auth returned correct **400 / 401**
-- Valid signed requests (`/sign`, `/license/check`, `/resolve`) returned **HTTP 500** with Cloudflare **error 1101** (uncaught exception)
-- Cloudflare email: **KV daily write quota exceeded** (free tier: 1,000 writes/day)
-
-### Root cause
-
-Each authenticated request previously performed **multiple KV writes** (nonce, audit, counters). At ~5+ writes per sign request, the free tier cap was reached quickly.
-
-### Fix (shipped + redeployed)
-
-1. **`KV_LITE_MODE=true`** — minimal KV writes on `/sign` and `/resolve`
-2. **`try/catch` around KV abuse checks** — graceful degradation
-3. **Top-level fetch handler** — JSON error instead of opaque 1101
-
-See historical file list in git history for `worker/src/kv_policy.js` and related Worker changes.
+| Dual-server catalog | Done | `store_manager.py` — Server 1 + Server 2 |
+| In-place multi-connection download | Done | `idm_downloader.py` — `.part.progress` resume |
+| Refresh download link | Done | Keep partials, new CDN URL |
+| Workers (sign / license / Anker resolve) | Done | See `worker/`, `worker-anker/` |
+| Protected EXE build | Done | `build-protected.ps1` → `dist/QuickPlay.exe` |
 
 ## Build & secrets
 
-- `client_secrets.py` is git-ignored — must match Worker secrets before building EXE
-- Standard build: `.\build.ps1` → `dist\QuickPlay.exe`
-- Protected build: `.\build-protected.ps1` (PyArmor on licensing/API modules)
+- `client_secrets.py` — match Worker secrets; committed on **private** `playzipdl` only
+- Standard: `.\build.ps1` · Protected: `.\build-protected.ps1` (PyArmor on licensing modules)
+- Close running QuickPlay before rebuild (WinError 5 if EXE locked)
 
-## Next steps (optional)
-
-- [ ] GitHub Release tag `quickplay-v2.7.5-beta` with `QuickPlay.exe`
-- [ ] Workers Paid plan if sign volume exceeds free KV tier
-- [ ] End-to-end test: refresh link during large Server 1 download + resume after restart
-
-## File changelog (2.7.5 beta — 2026-09-16)
+## File changelog (2026-09-16 session)
 
 | File | Change |
 |------|--------|
-| `idm_downloader.py` | In-place multi-connection writes; `.part.progress`; no merge pass |
-| `download_service.py` | Refresh link API; resolve status UI; partial/progress cleanup |
-| `playzip_api.py` / `anker/anker_api.py` | Resolve status callbacks for UI |
-| `store_manager.py` | Wire `on_resolve_status` to store clients |
-| `web/app.js` / `web/i18n.js` | Refresh link button + status lines |
-| `settings_manager.py` | `APP_VERSION = 2.7.5-beta`, `APP_TITLE` |
-| `main.py` / `web/index.html` | Window title + brand show beta version |
+| `download_service.py` | Do not delete final archive after successful download; extract pre-check; cancel `remove_final` |
+| `redist_installer.py` | New — Microsoft runtime one-click install |
+| `http_catalog.py` | New — catalog HTTP retry + session renew |
+| `playzip_api.py` / `anker/anker_api.py` | Stale connection retry; catalog timeouts |
+| `store_manager.py` | `invalidate_cached_clients()` |
+| `backend/server.py` | Redist routes; store refresh; download `to_thread` |
+| `web/app.js` | Redist UI, browse idle refresh, API timeout/retry |
+| `web/index.html` / `i18n.js` / `style.css` | Runtime settings block |
+| `game_details.py` | Server 1 detail HTML cleanup |
+| `release.spec` | `http_catalog` hidden import |
+| `dist/QuickPlay.exe` | Rebuilt protected binary |
 
-See also [RELEASE_NOTES.md](RELEASE_NOTES.md), [AGENTS.md](AGENTS.md), [README.md](README.md).
+See also [AGENTS.md](AGENTS.md), [RELEASE_NOTES.md](RELEASE_NOTES.md).

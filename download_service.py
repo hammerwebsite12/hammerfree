@@ -430,6 +430,9 @@ class DownloadService:
             to_resume.append(item)
 
         if not to_resume:
+            swept = self._sweep_orphaned_part_files()
+            if swept:
+                self.logger.info(f"Removed {swept} orphaned partial download file(s)")
             self._advance_queue()
             return
 
@@ -1229,7 +1232,7 @@ class DownloadService:
                 dest_path=dest_path,
             )
             for path in cleanup_paths:
-                self._schedule_part_cleanup(path)
+                self._schedule_part_cleanup(path, remove_final=True)
             self.logger.info(f"[{title}] Removed from download queue")
             self._remove_task(task_id, advance=False)
             self._refresh_queue_positions()
@@ -1252,7 +1255,7 @@ class DownloadService:
                     dest_path=dest_path,
                 )
                 for path in cleanup_paths:
-                    self._schedule_part_cleanup(path)
+                    self._schedule_part_cleanup(path, remove_final=True)
                 self.logger.info(f"[{title}] Download cancelled by user (pending)")
                 self._remove_task(task_id)
                 return True
@@ -1264,7 +1267,7 @@ class DownloadService:
                     dest_path=dest_path,
                 )
                 for path in cleanup_paths:
-                    self._schedule_part_cleanup(path)
+                    self._schedule_part_cleanup(path, remove_final=True)
                 self.logger.info(f"[{title}] Download cancelled by user (cleanup)")
                 self._remove_task(task_id)
                 return True
@@ -1277,12 +1280,12 @@ class DownloadService:
             dest_path=task.dest_path,
         )
         for path in cleanup_paths:
-            self._schedule_part_cleanup(path)
+            self._schedule_part_cleanup(path, remove_final=True)
         self.logger.info(f"[{title}] Download cancelled by user")
         self._remove_task(task_id)
         return True
 
-    def _schedule_part_cleanup(self, dest_path: str) -> None:
+    def _schedule_part_cleanup(self, dest_path: str, *, remove_final: bool = False) -> None:
         if not dest_path:
             return
         self._cleanup_part_files(dest_path)
@@ -1290,16 +1293,17 @@ class DownloadService:
         def worker() -> None:
             time.sleep(0.6)
             self._cleanup_part_files(dest_path, retries=10)
+            if remove_final:
+                DownloadService._remove_incomplete_archive(dest_path)
 
         threading.Thread(target=worker, name="part-cleanup", daemon=True).start()
+        if remove_final:
+            DownloadService._remove_incomplete_archive(dest_path)
 
     @staticmethod
     def _dest_path_from_part_filename(filename: str) -> str | None:
-        if filename.endswith(".part.progress") or filename.endswith(".part.progress.tmp"):
-            trimmed = filename
-            if trimmed.endswith(".tmp"):
-                trimmed = trimmed[:-4]
-            return trimmed[: -len(".part.progress")]
+        if ".part.progress" in filename:
+            return filename.split(".part.progress", 1)[0]
         if filename.endswith(".part"):
             return filename[:-5]
         marker = ".part.part"
@@ -1352,12 +1356,16 @@ class DownloadService:
         for dest_path, paths in by_dest.items():
             if dest_path in protected:
                 continue
+            final_archive = os.path.isfile(dest_path) and os.path.getsize(dest_path) > 0
+            active_part = os.path.isfile(dest_path + ".part")
             for path in paths:
                 try:
                     os.remove(path)
                     removed += 1
                 except OSError:
                     pass
+            if final_archive and not active_part:
+                continue
             if os.path.isfile(dest_path):
                 try:
                     os.remove(dest_path)
@@ -1384,6 +1392,9 @@ class DownloadService:
             progress_tmp = progress_path + ".tmp"
             if os.path.isfile(progress_tmp):
                 paths.append(progress_tmp)
+            for match in glob.glob(glob.escape(progress_path) + ".*.tmp"):
+                if match not in paths:
+                    paths.append(match)
             if os.path.isfile(part_path):
                 paths.append(part_path)
             try:
@@ -1410,23 +1421,19 @@ class DownloadService:
             if attempt < retries - 1:
                 time.sleep(0.15 * (attempt + 1))
 
-        # Incomplete archive with no active resume queue entry should not linger.
-        if os.path.isfile(dest_path):
-            part_path = dest_path + ".part"
-            has_partial = os.path.isfile(part_path) or os.path.isfile(progress_path)
-            if not has_partial:
-                try:
-                    for entry in os.listdir(part_dir):
-                        if entry.startswith(part_name + ".part"):
-                            has_partial = True
-                            break
-                except OSError:
-                    pass
-            if not has_partial:
-                try:
-                    os.remove(dest_path)
-                except OSError:
-                    pass
+    @staticmethod
+    def _remove_incomplete_archive(dest_path: str) -> None:
+        """Drop a failed/partial final file only when explicitly cancelling — never after a completed download."""
+        if not dest_path or not os.path.isfile(dest_path):
+            return
+        part_path = dest_path + ".part"
+        progress_path = part_path + ".progress"
+        if os.path.isfile(part_path) or os.path.isfile(progress_path):
+            return
+        try:
+            os.remove(dest_path)
+        except OSError:
+            pass
 
     def _on_download_complete(self, task_id: str) -> None:
         with self._lock:
@@ -1437,6 +1444,7 @@ class DownloadService:
             return
 
         self._queue_store().remove(task.dest_path)
+        self._schedule_part_cleanup(task.dest_path)
 
         archive_path = task.dest_path
         install_dir = os.path.join(
@@ -1463,6 +1471,14 @@ class DownloadService:
 
         def worker() -> None:
             try:
+                if not os.path.isfile(archive_path):
+                    raise RuntimeError(
+                        f"Archive missing before extract: {os.path.basename(archive_path)}"
+                    )
+                size_mb = os.path.getsize(archive_path) // (1024 * 1024)
+                self.logger.info(
+                    f"[{game.title}] Extracting archive ({size_mb} MB) → {install_dir}"
+                )
                 extract_archive(
                     archive_path,
                     install_dir,
@@ -1476,10 +1492,15 @@ class DownloadService:
                     self.logger.info(
                         f"[{game.title}] Removed archive {os.path.basename(archive_path)}"
                     )
+                self._schedule_part_cleanup(archive_path)
                 exes = scan_executables(install_dir)
                 self.logger.info(f"[{game.title}] Found {len(exes)} EXE file(s)")
                 self._post_extract(task_id, game, install_dir, exes)
             except Exception as exc:
+                if os.path.isfile(archive_path):
+                    self.logger.warn(
+                        f"[{game.title}] Extract failed — archive kept at {archive_path}"
+                    )
                 self.logger.error(f"[{game.title}] Extract failed: {exc}")
                 with self._lock:
                     v = self._task_views.get(task_id)

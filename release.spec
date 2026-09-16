@@ -37,6 +37,7 @@ a = Analysis(
         "gamepad_input",
         "client_secrets",
         "playzip_api",
+        "http_catalog",
         "store_manager",
         "anker",
         "anker.anker_api",

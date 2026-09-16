@@ -216,6 +216,7 @@ class StoreManager:
             games = self.get_client().browse(page=page, sort=sort, category=category)
             return games, meta
         except RuntimeError as exc:
+            self.invalidate_cached_clients()
             if self._active != STORE_SERVER1:
                 raise
             if not self.check_server2_reachable():
@@ -245,7 +246,11 @@ class StoreManager:
         if not q:
             return [], meta
 
-        games = self.get_client().search(q)
+        try:
+            games = self.get_client().search(q)
+        except RuntimeError:
+            self.invalidate_cached_clients()
+            raise
         if games or self._active != STORE_SERVER1:
             return games, meta
 
@@ -270,6 +275,20 @@ class StoreManager:
         meta["store_switched"] = True
         meta["store_switch_reason"] = "search_no_results"
         return alt_games, meta
+
+    def invalidate_cached_clients(self) -> None:
+        if self._cached_playzip is not None:
+            try:
+                self._cached_playzip.session.close()
+            except OSError:
+                pass
+            self._cached_playzip = None
+        if self._cached_anker is not None:
+            try:
+                self._cached_anker.session.close()
+            except OSError:
+                pass
+            self._cached_anker = None
 
     def _get_playzip_client(self) -> PlayZipClient:
         if self._cached_playzip is None:

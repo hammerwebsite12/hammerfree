@@ -1194,6 +1194,34 @@ body.controller-mode .help-contact-card.gp-focused {
   font-size: 0.9rem;
 }
 
+.detail-top-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.detail-top-row .detail-title {
+  flex: 1 1 200px;
+  margin: 0;
+}
+
+.detail-top-row .detail-download-btn {
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+
+.detail-actions-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
 .detail-title {
   font-size: 1.75rem;
   font-weight: 700;
@@ -1298,15 +1326,6 @@ body.controller-mode .help-contact-card.gp-focused {
   display: block;
 }
 
-.detail-actions {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
-  padding-top: 8px;
-  border-top: 1px solid var(--border);
-}
-
 .detail-download-btn {
   font-size: 1rem;
   padding: 12px 28px;
@@ -1334,6 +1353,24 @@ body.controller-mode .help-contact-card.gp-focused {
 
 .storage-info.warn {
   color: #e6a23c;
+}
+
+.redist-log {
+  margin-top: 8px;
+  max-height: 160px;
+  overflow: auto;
+  font-size: 0.75rem;
+  color: var(--muted);
+  background: #111;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.redist-log.hidden {
+  display: none;
 }
 
 .storage-info.err {

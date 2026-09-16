@@ -21,37 +21,82 @@ const state = {
   detailHls: null,
   detailStorage: null,
   libraryHealNotified: false,
+  redistRunning: false,
 };
 
 // ── API helpers ──
 async function api(path, opts = {}) {
-  const res = await fetch(path, {
-    headers: { "Content-Type": "application/json", ...opts.headers },
-    ...opts,
-  });
-  if (!res.ok) {
-    const errText = await res.text();
-    let detail = null;
+  const {
+    timeoutMs = 90000,
+    retries = 0,
+    ...fetchOpts
+  } = opts;
+  const headers = { "Content-Type": "application/json", ...fetchOpts.headers };
+  let lastErr;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      const parsed = JSON.parse(errText);
-      detail = parsed.detail ?? parsed;
-      if (typeof detail === "string") {
+      const res = await fetch(path, {
+        ...fetchOpts,
+        headers,
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+      if (!res.ok) {
+        const errText = await res.text();
+        let detail = null;
         try {
-          detail = JSON.parse(detail);
+          const parsed = JSON.parse(errText);
+          detail = parsed.detail ?? parsed;
+          if (typeof detail === "string") {
+            try {
+              detail = JSON.parse(detail);
+            } catch (_) {
+              /* keep string */
+            }
+          }
         } catch (_) {
-          /* keep string */
+          /* plain text error */
         }
+        const message = detail?.message || (typeof detail === "string" ? detail : errText) || res.statusText;
+        const err = new Error(message);
+        err.status = res.status;
+        err.detail = detail;
+        throw err;
       }
-    } catch (_) {
-      /* plain text error */
+      return res.json();
+    } catch (e) {
+      clearTimeout(timer);
+      lastErr = e;
+      const retryable = e.name === "AbortError"
+        || e.message === "Failed to fetch"
+        || (e.status >= 502 && e.status <= 504);
+      if (attempt < retries && retryable) {
+        await new Promise((r) => setTimeout(r, 1200 * (attempt + 1)));
+        continue;
+      }
+      if (e.name === "AbortError") {
+        throw new Error("Request timed out — check your connection and try again.");
+      }
+      throw e;
     }
-    const message = detail?.message || (typeof detail === "string" ? detail : errText) || res.statusText;
-    const err = new Error(message);
-    err.status = res.status;
-    err.detail = detail;
-    throw err;
   }
-  return res.json();
+  throw lastErr;
+}
+
+let lastBrowseActivity = Date.now();
+function markBrowseActivity() {
+  lastBrowseActivity = Date.now();
+}
+
+async function refreshStoreSessionsIfIdle() {
+  const idleMs = Date.now() - lastBrowseActivity;
+  if (idleMs < 3 * 60 * 1000) return;
+  try {
+    await api("/api/store/refresh-sessions", { method: "POST", timeoutMs: 15000 });
+  } catch (_) {}
+  markBrowseActivity();
 }
 
 function setStatus(msg) {
@@ -541,6 +586,9 @@ function switchTab(name) {
   if (name === "library") { loadLibrary(); loadPendingExe(); }
   if (name === "downloads") { loadTasks(); loadPendingExe(); loadLogs(); }
   if (name === "settings") loadSettingsForm();
+  if (name === "browse") {
+    refreshRedistStatus().then(syncRedistStatusBar);
+  }
   gpRefresh();
 }
 
@@ -661,13 +709,16 @@ async function loadBrowse() {
   $("#browseLoading").classList.remove("hidden");
   $("#gameGrid").innerHTML = "";
   try {
+    await refreshStoreSessionsIfIdle();
     let data;
+    const browseOpts = { retries: 1, timeoutMs: 90000 };
     if (state.searchQuery) {
-      data = await api(`/api/search?q=${encodeURIComponent(state.searchQuery)}`);
+      data = await api(`/api/search?q=${encodeURIComponent(state.searchQuery)}`, browseOpts);
       $("#pageLabel").textContent = `Search: "${state.searchQuery}"`;
     } else {
       data = await api(
-        `/api/browse?page=${state.page}&sort=${state.sort}&category=${encodeURIComponent(state.category)}`
+        `/api/browse?page=${state.page}&sort=${state.sort}&category=${encodeURIComponent(state.category)}`,
+        browseOpts,
       );
       const catLabel = state.categories.find((c) => c.id === state.category)?.label || state.category;
       $("#pageLabel").textContent = `${t("pager.page")} ${state.page} · ${state.sort} · ${catLabel}`;
@@ -680,8 +731,10 @@ async function loadBrowse() {
     }
   } catch (e) {
     setStatus(`Error: ${e.message}`);
+    showToast(e.message, { type: "error", duration: 6000, actionLabel: t("browse.retry") || "Retry", onAction: () => loadBrowse() });
   } finally {
     $("#browseLoading").classList.add("hidden");
+    markBrowseActivity();
   }
 }
 
@@ -784,8 +837,68 @@ function loadSettingsForm() {
   }
   if (state.config && !state.config.is_windows) {
     $("#defenderGroup").classList.add("hidden");
+    $("#redistGroup")?.classList.add("hidden");
   }
   loadStorageInfo(s.download_dir || "");
+  refreshRedistStatus();
+}
+
+function applyRedistStatus(st) {
+  if (!st) return;
+  const btn = $("#installRedistBtn");
+  const statusEl = $("#redistStatus");
+  const logEl = $("#redistLog");
+  if (btn) btn.disabled = !!st.running;
+  if (!statusEl) return;
+  if (st.running) {
+    const base = t("settings.redistRunning", {
+      current: st.index || 0,
+      total: st.total || 0,
+      name: st.current_name || "",
+    });
+    statusEl.textContent = st.message ? `${base} — ${st.message}` : base;
+  } else if (st.finished && !st.error) {
+    statusEl.textContent = t("settings.redistDone");
+  } else {
+    statusEl.textContent = st.message || st.error || "";
+  }
+  if (!st.running && st.finished && !st.error && btn) {
+    btn.disabled = false;
+  }
+  if (logEl && st.log && st.log.length) {
+    logEl.classList.remove("hidden");
+    logEl.textContent = st.log.join("\n");
+  }
+}
+
+async function refreshRedistStatus() {
+  if (state.config && !state.config.is_windows) return null;
+  try {
+    const st = await api("/api/redistributables/status");
+    state.redistRunning = !!st.running;
+    applyRedistStatus(st);
+    return st;
+  } catch (_) {
+    return null;
+  }
+}
+
+let redistLogsDebounce = null;
+function scheduleRedistLogsRefresh() {
+  if (redistLogsDebounce) return;
+  redistLogsDebounce = setTimeout(() => {
+    redistLogsDebounce = null;
+    loadLogs();
+  }, 350);
+}
+
+function syncRedistStatusBar(st) {
+  if (!st || st.running) return;
+  state.redistRunning = false;
+  const bar = $("#statusBar")?.textContent || "";
+  if (/installing runtimes|nag-i-install ng runtime|正在安装运行库|instalando runtimes/i.test(bar)) {
+    setStatus(st.error || t("settings.redistDone"));
+  }
 }
 
 function updateDefenderStatus(msg) {
@@ -819,6 +932,24 @@ async function pickFolderNative() {
 
 $("#connectionsRange").addEventListener("input", (e) => {
   $("#connectionsValue").textContent = e.target.value;
+});
+
+$("#installRedistBtn")?.addEventListener("click", async () => {
+  const ok = await showConfirm({
+    title: t("settings.redistConfirmTitle"),
+    message: t("settings.redistConfirmMsg"),
+    confirmText: t("settings.redistBtn"),
+    cancelText: t("confirm.cancel"),
+    danger: false,
+  });
+  if (!ok) return;
+  try {
+    await api("/api/redistributables/install", { method: "POST" });
+    await refreshRedistStatus();
+    setStatus(t("settings.redistRunning", { current: 0, total: 0, name: "" }));
+  } catch (e) {
+    setStatus(e.message || "Runtime install failed");
+  }
 });
 
 $("#browseFolderBtn").addEventListener("click", async () => {
@@ -856,6 +987,9 @@ async function applyStoreChange(newStore, { reloadBrowse = true } = {}) {
   renderCategoryBar();
   await reloadCategories();
   if (reloadBrowse) {
+    try {
+      await api("/api/store/refresh-sessions", { method: "POST", timeoutMs: 15000 });
+    } catch (_) {}
     if (state.tab !== "browse") switchTab("browse");
     await loadBrowse();
   }
@@ -963,8 +1097,35 @@ function closeGameDetail() {
   gpRefresh();
 }
 
+function isDetailForGame(game) {
+  return state.detailGame && String(state.detailGame.game_id) === String(game.game_id);
+}
+
+async function prefetchDetailDiskSpace(game) {
+  const dir = state.settings?.download_dir || state.config?.download_dir;
+  if (!dir) return;
+  try {
+    const q = new URLSearchParams({ path: dir });
+    const u = await api(`/api/storage?${q}`);
+    if (!isDetailForGame(game)) return;
+    const prev = state.detailStorage || {};
+    state.detailStorage = {
+      store_size_bytes: prev.store_size_bytes ?? null,
+      disk_free_bytes: u.free_bytes,
+      required_bytes: prev.required_bytes ?? null,
+      space_ok: prev.space_ok ?? true,
+      space_unknown: prev.store_size_bytes == null,
+      message: prev.message || "",
+    };
+    updateDetailLibraryState();
+  } catch (_) {
+    /* download still allowed without disk stats */
+  }
+}
+
 async function openGameDetail(game) {
   state.detailGame = game;
+  state.detailStorage = null;
   $("#gameDetailModal").classList.remove("hidden");
   $("#detailLoading").classList.remove("hidden");
   $("#detailTitle").textContent = displayText(game.title);
@@ -978,13 +1139,23 @@ async function openGameDetail(game) {
   $("#detailStorage").textContent = "";
   $("#detailHero").src = game.image_url || "";
   $("#detailHero").classList.remove("hidden");
+  destroyDetailVideo();
 
+  // Android parity: download uses browse/catalog ids — not blocked on slow detail fetch.
+  updateDetailLibraryState();
+  void prefetchDetailDiskSpace(game);
+  void loadGameDetailExtras(game);
+  gpRefresh();
+}
+
+async function loadGameDetailExtras(game) {
   try {
     const q = new URLSearchParams({
       title: game.title,
       image_url: game.image_url || "",
     });
     const d = await api(`/api/games/${encodeURIComponent(game.game_id)}/details?${q}`);
+    if (!isDetailForGame(game)) return;
     state.detailStorage = {
       store_size_bytes: d.store_size_bytes,
       disk_free_bytes: d.disk_free_bytes,
@@ -996,12 +1167,16 @@ async function openGameDetail(game) {
     renderGameDetail(d);
     setStatus(d.title);
   } catch (e) {
+    if (!isDetailForGame(game)) return;
     $("#detailDesc").textContent = "Could not load game details.";
     setStatus(`Detail error: ${e.message}`);
+    updateDetailLibraryState();
   } finally {
+    if (!isDetailForGame(game)) return;
     $("#detailLoading").classList.add("hidden");
+    updateDetailLibraryState();
+    gpRefresh();
   }
-  gpRefresh();
 }
 
 function renderGameDetail(d) {
@@ -1024,12 +1199,13 @@ function renderGameDetail(d) {
 
   renderStorageHint(d);
 
-  if (d.description_html && d.source !== "steam") {
+  const useStoreHtml = d.description_html && d.source === "store";
+  if (useStoreHtml) {
     $("#detailDescHtml").innerHTML = d.description_html;
   } else {
     $("#detailDescHtml").innerHTML = "";
   }
-  if (d.source === "steam" || d.source === "mixed" || !d.description_html) {
+  if (!useStoreHtml || !d.description_html) {
     $("#detailDesc").textContent = d.description || "";
   } else {
     $("#detailDesc").textContent = "";
@@ -1080,7 +1256,7 @@ function updateDetailLibraryState() {
   if (btn) {
     btn.textContent = inLib ? "\u2b07 Re-download" : "\u2b07 Download Game";
     btn.classList.toggle("in-library", inLib);
-    const blocked = !canDownloadGame(state.detailStorage);
+    const blocked = state.detailStorage != null && !canDownloadGame(state.detailStorage);
     btn.disabled = blocked;
     btn.title = blocked ? (t("storage.blockTitle") || "") : "";
   }
@@ -1130,6 +1306,13 @@ async function startDownload(game, storage = null) {
         store_size_bytes: storage?.store_size_bytes ?? null,
       }),
     });
+
+    if (data.ok === false) {
+      const msg = data.message || data.error || t("download.failed", { msg: "unknown" });
+      setStatus(msg);
+      showToast(msg, { type: "error", duration: 6000 });
+      return;
+    }
 
     if (data.already_queued) {
       const msg = t("download.alreadyInQueue", { title });
@@ -2124,6 +2307,9 @@ function connectSSE() {
   es.onopen = () => {
     // Resync the authoritative task list on (re)connect so nothing lingers.
     loadTasks();
+    if (state.tab === "browse") {
+      void refreshStoreSessionsIfIdle().then(() => loadBrowse());
+    }
   };
   es.onmessage = (ev) => {
     try {
@@ -2146,6 +2332,22 @@ function connectSSE() {
         applyGateProgress(payload);
         renderDownloadDock();
         if (state.tab === "downloads") scheduleRenderTasks();
+      }
+      if (type === "redist_progress") {
+        const wasRunning = state.redistRunning;
+        state.redistRunning = !!payload.running;
+        applyRedistStatus(payload);
+        scheduleRedistLogsRefresh();
+        if (payload.running) {
+          setStatus(t("settings.redistRunning", {
+            current: payload.index || 0,
+            total: payload.total || 0,
+            name: payload.current_name || "",
+          }));
+        } else if (wasRunning && payload.finished) {
+          setStatus(payload.error || t("settings.redistDone"));
+          loadTasks();
+        }
       }
       if (type === "exe_picker") {
         loadPendingExe().then(() => {
@@ -2340,5 +2542,13 @@ async function init() {
     if (state.tab === "downloads") loadLogs();
   }, 2000);
 }
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "visible") return;
+  if (state.tab !== "browse") return;
+  const idleMs = Date.now() - lastBrowseActivity;
+  if (idleMs < 3 * 60 * 1000) return;
+  void refreshStoreSessionsIfIdle().then(() => loadBrowse());
+});
 
 document.addEventListener("DOMContentLoaded", init);
