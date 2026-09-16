@@ -25,6 +25,5 @@ worker/node_modules/
 cache/
 *.log
 
-# Client credentials for the download-signer Worker (baked into the EXE at
-# build time, but never committed). Use client_secrets.example.py as template.
-client_secrets.py
+# Client credentials: client_secrets.py is committed in private playzipdl only.
+# Do not push this repo to a public remote without re-ignoring it.
