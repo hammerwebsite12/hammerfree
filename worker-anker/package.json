@@ -1,0 +1,19 @@
+{
+  "name": "quickplay-anker-workers",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Dedicated AnkerGames license gate + download resolver (separate from playzip dl-resolver).",
+  "scripts": {
+    "deploy": "powershell -NoProfile -ExecutionPolicy Bypass -File ./deploy-anker.ps1",
+    "deploy:relogin": "powershell -NoProfile -ExecutionPolicy Bypass -File ./deploy-anker.ps1 -ReLogin",
+    "deploy:dl:relogin": "powershell -NoProfile -ExecutionPolicy Bypass -File ./deploy-anker.ps1 -ReLogin -DlOnly",
+    "deploy:resolver": "wrangler deploy -c wrangler.anker-resolver.jsonc",
+    "deploy:dl": "wrangler deploy -c wrangler.anker-dlresolver.jsonc",
+    "deploy:all": "powershell -NoProfile -ExecutionPolicy Bypass -File ./deploy-anker.ps1",
+    "dev:resolver": "wrangler dev -c wrangler.anker-resolver.jsonc",
+    "dev:dl": "wrangler dev -c wrangler.anker-dlresolver.jsonc"
+  },
+  "devDependencies": {
+    "wrangler": "^4.118.0"
+  }
+}

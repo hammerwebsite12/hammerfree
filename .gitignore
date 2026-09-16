@@ -1,0 +1,30 @@
+# Build artifacts
+build/
+__pycache__/
+*.spec
+!release.spec
+!QuickPlay.spec
+*.part
+*.part.part*
+.venv/
+.build-python/
+
+# Local app data (per-machine)
+settings.json
+library.json
+
+# Runtime / user data lives in dist and the download folder.
+# Publish only the built EXE, not settings/library/logs/games.
+dist/*
+!dist/QuickPlay.exe
+
+# Worker dependencies (source is published, deps are not).
+worker/node_modules/
+
+# Local caches & logs
+cache/
+*.log
+
+# Client credentials for the download-signer Worker (baked into the EXE at
+# build time, but never committed). Use client_secrets.example.py as template.
+client_secrets.py

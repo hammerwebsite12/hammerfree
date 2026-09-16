@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuickPlay 2.7.5 beta</title>
+  <link rel="icon" href="/favicon.ico" type="image/x-icon" />
+  <link rel="stylesheet" href="/static/style.css" />
+  <link rel="stylesheet" href="/static/bigpicture.css" />
+  <script src="/static/hls.min.js"></script>
+  <script src="/static/i18n.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-row topbar-main">
+      <div class="brand" id="appBrand">QuickPlay 2.7.5 beta</div>
+      <nav class="tabs" role="tablist">
+        <button class="tab active" data-tab="browse" role="tab" data-i18n="tab.browse">Browse</button>
+        <button class="tab" data-tab="library" role="tab" data-i18n="tab.library">My Library</button>
+        <button class="tab" data-tab="downloads" role="tab" data-i18n="tab.downloads">Downloads</button>
+        <button class="tab" data-tab="settings" role="tab" data-i18n="tab.settings">Settings</button>
+        <button class="tab" data-tab="help" role="tab" data-i18n="tab.help">Help</button>
+      </nav>
+      <div class="status" id="statusBar" data-i18n="app.ready">Ready</div>
+    </div>
+  </header>
+
+  <div id="globalPendingExe" class="global-pending-exe hidden" aria-live="polite"></div>
+  <div id="toastHost" class="toast-host" aria-live="polite" aria-atomic="true"></div>
+
+  <!-- Browse -->
+  <section id="panel-browse" class="panel active">
+    <div class="toolbar">
+      <div class="search-box">
+        <input type="search" id="searchInput" placeholder="Search games..." data-i18n-ph="search.ph" autocomplete="off" />
+        <button id="searchBtn" class="btn accent" data-i18n="search.btn">Search</button>
+      </div>
+      <div class="sort-group">
+        <button class="sort-btn active" data-sort="views" data-i18n="sort.views">Views</button>
+        <button class="sort-btn" data-sort="latest" data-i18n="sort.latest">Latest</button>
+      </div>
+      <div class="pager">
+        <button id="prevPage" class="btn" data-i18n="pager.prev">◀ Prev</button>
+        <span id="pageLabel">Page 1</span>
+        <button id="nextPage" class="btn" data-i18n="pager.next">Next ▶</button>
+      </div>
+    </div>
+    <div class="category-bar" id="categoryBar"></div>
+    <div id="gameGrid" class="game-grid"></div>
+    <div id="browseEmpty" class="empty hidden" data-i18n="browse.empty">No games found.</div>
+    <div id="browseLoading" class="loading hidden" data-i18n="browse.loading">Loading games...</div>
+  </section>
+
+  <!-- Library -->
+  <section id="panel-library" class="panel">
+    <div class="panel-header">
+      <h2 data-i18n="library.heading">Installed Games</h2>
+      <div class="library-header-actions">
+        <button id="libraryBigPictureBtn" class="btn small accent" data-i18n="library.bigPicture">Big Picture</button>
+        <button id="libraryScanBtn" class="btn small subtle" data-i18n="library.rescanBtn" data-i18n-title="library.rescanHint">Re-scan folder</button>
+        <span class="hint" id="rootHint"></span>
+      </div>
+    </div>
+    <div id="libraryWarning" class="library-warning hidden"></div>
+    <div id="libraryGrid" class="game-grid library-grid"></div>
+    <div id="libraryEmpty" class="empty" data-i18n="library.empty">No installed games yet. Download from the Browse tab.</div>
+  </section>
+
+  <!-- Downloads -->
+  <section id="panel-downloads" class="panel">
+    <div class="panel-header">
+      <h2 data-i18n="downloads.heading">Active Downloads</h2>
+      <button id="clearLogs" class="btn small" data-i18n="downloads.clearLogs">Clear Logs</button>
+    </div>
+    <div id="pendingExeList" class="pending-exe-list hidden"></div>
+    <div id="taskList" class="task-list"></div>
+    <div id="taskEmpty" class="empty" data-i18n="downloads.empty">No active downloads.</div>
+    <div class="log-panel" id="logPanel">
+      <h3 data-i18n="downloads.logs">Download Logs</h3>
+      <pre id="logView"></pre>
+    </div>
+  </section>
+
+  <!-- Settings -->
+  <section id="panel-settings" class="panel">
+    <div class="settings-wrap">
+      <h2 data-i18n="settings.heading">Settings</h2>
+      <p class="setting-hint settings-version" id="appVersionLabel">Version 2.7.5 beta</p>
+      <p class="setting-hint" id="libraryPathHint"></p>
+
+      <div class="setting-group">
+        <label class="setting-label" for="storeSelect" data-i18n="settings.storeLabel">Game Store Server</label>
+        <p class="setting-hint" data-i18n="settings.storeHint">Choose which catalog to browse. The app may auto-switch to Server 2 if Server 1 is unreachable or a search finds no results.</p>
+        <select id="storeSelect" class="setting-input setting-select"></select>
+      </div>
+
+      <div class="setting-group">
+        <label class="setting-label" for="languageSelect" data-i18n="settings.language">Language</label>
+        <p class="setting-hint" data-i18n="settings.languageHint">Choose the app display language.</p>
+        <select id="languageSelect" class="setting-input setting-select"></select>
+      </div>
+
+      <div class="setting-group">
+        <label class="setting-label" for="downloadDir" data-i18n="settings.folderLabel">Download / Games Folder</label>
+        <p class="setting-hint" data-i18n="settings.folderHint">All downloads and extracted games go here.</p>
+        <div class="folder-row">
+          <input type="text" id="downloadDir" class="setting-input" readonly />
+          <button id="browseFolderBtn" class="btn" data-i18n="settings.browse">Browse...</button>
+        </div>
+        <p class="setting-hint storage-info" id="storageInfo"></p>
+      </div>
+
+      <div class="setting-group">
+        <label class="setting-label" for="connectionsRange">
+          <span data-i18n="settings.connLabel">Download Connections:</span> <strong id="connectionsValue">8</strong>
+        </label>
+        <p class="setting-hint" data-i18n="settings.connHint">Parallel connections (8–64). Higher = faster if the server allows.</p>
+        <input type="range" id="connectionsRange" min="8" max="64" step="1" value="8" class="setting-range" />
+        <div class="range-labels"><span>8</span><span>32</span><span>64</span></div>
+      </div>
+
+      <div class="setting-group setting-check">
+        <label>
+          <input type="checkbox" id="allowBigPictureCheck" />
+          <span data-i18n="settings.allowBigPicture">Start in Big Picture mode</span>
+        </label>
+        <p class="setting-hint" data-i18n="settings.allowBigPictureHint">Opens My Library fullscreen on startup with a Steam Deck-style launcher. Skips announcements when enabled.</p>
+      </div>
+
+      <div class="setting-group setting-check">
+        <label>
+          <input type="checkbox" id="controllerEnabledCheck" />
+          <span data-i18n="settings.controller">Controller navigation</span>
+        </label>
+        <p class="setting-hint" data-i18n="settings.controllerHint">Navigate menus with a gamepad. D-pad or stick to move, A to select, B to go back, LB/RB to switch tabs.</p>
+      </div>
+
+      <div class="setting-group setting-check">
+        <label>
+          <input type="checkbox" id="verificationWindowFullCheck" />
+          <span data-i18n="settings.verificationWindowFull">Show verification page</span>
+        </label>
+        <p class="setting-hint" data-i18n="settings.verificationWindowFullHint">Shows Server 2 download and verification activity. If auto-fetch cannot finish, click Verify when prompted. Turn on when Server 2 downloads keep failing.</p>
+      </div>
+
+      <div class="setting-group setting-check">
+        <label>
+          <input type="checkbox" id="disableAnnouncementCheck" />
+          <span data-i18n="settings.disableAnnounce">Disable announcement on startup</span>
+        </label>
+        <p class="setting-hint" data-i18n="settings.disableAnnounceHint">When checked, status messages will not show when the app opens.</p>
+      </div>
+
+      <div class="setting-group setting-check" id="defenderGroup">
+        <label>
+          <input type="checkbox" id="defenderCheck" checked />
+          <span data-i18n="settings.defender">Add download folder to Microsoft Defender exclusions (Windows)</span>
+        </label>
+        <p class="setting-hint" id="defenderStatus"></p>
+      </div>
+
+      <div class="setting-actions">
+        <button id="saveSettingsBtn" class="btn accent" data-i18n="settings.save">Save Settings</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Help -->
+  <section id="panel-help" class="panel">
+    <div class="help-wrap">
+      <h2 data-i18n="help.heading">Help &amp; Support</h2>
+      <p class="help-intro" data-i18n="help.intro">Have a question or need help? Reach us on Telegram or Discord.</p>
+
+      <div class="help-contacts">
+        <button type="button" class="help-contact-card" id="contactTelegram" title="Open Telegram: @McdaleHammer">
+          <span class="help-contact-icon" aria-hidden="true">✈</span>
+          <span class="help-contact-body">
+            <span class="help-contact-label">Telegram</span>
+            <span class="help-contact-value">@McdaleHammer</span>
+            <span class="help-contact-action" data-i18n="help.telegramAction">Click to open in browser</span>
+          </span>
+        </button>
+
+        <button type="button" class="help-contact-card" id="contactDiscord" title="Copy Discord username: hammersteamsupport">
+          <span class="help-contact-icon" aria-hidden="true">💬</span>
+          <span class="help-contact-body">
+            <span class="help-contact-label">Discord</span>
+            <span class="help-contact-value">hammersteamsupport</span>
+            <span class="help-contact-action" data-i18n="help.discordAction">Click to copy username</span>
+          </span>
+        </button>
+      </div>
+
+      <p class="help-footer-hint" data-i18n-html="help.footerHint">For updates, check the <strong>FOLLOW OUR PAGE</strong> link at the bottom of the app.</p>
+    </div>
+  </section>
+
+  <!-- Game Store Detail -->
+  <div id="gameDetailModal" class="game-detail-modal hidden" role="dialog" aria-modal="true">
+    <div class="detail-header">
+      <button id="detailClose" class="detail-close" aria-label="Close">✕</button>
+    </div>
+    <div class="detail-scroll">
+      <div class="detail-hero-wrap">
+        <video id="detailVideo" class="detail-hero hidden" muted loop playsinline controls></video>
+        <img id="detailHero" class="detail-hero" alt="" />
+        <div class="detail-hero-shade"></div>
+      </div>
+      <div class="detail-content">
+        <div class="detail-loading hidden" id="detailLoading" data-i18n="detail.loading">Loading game info…</div>
+        <h1 id="detailTitle" class="detail-title"></h1>
+        <div id="detailMeta" class="detail-meta"></div>
+        <div id="detailTags" class="detail-tags"></div>
+        <p id="detailDesc" class="detail-desc"></p>
+        <div id="detailDescHtml" class="detail-desc-html"></div>
+        <h3 class="detail-section-title hidden" id="screenshotsTitle" data-i18n="detail.screenshots">Screenshots</h3>
+        <div id="detailScreenshots" class="detail-screenshots"></div>
+        <div class="detail-actions">
+          <button id="detailDownload" class="btn accent detail-download-btn" data-i18n="detail.download">⬇ Download Game</button>
+          <span id="detailLibraryNote" class="detail-library-note hidden" data-i18n="detail.inLibrary">✓ Added already in Library</span>
+          <div class="detail-storage" id="detailStorage"></div>
+          <span id="detailSource" class="detail-source"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EXE Picker Modal -->
+  <div id="exeModal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop"></div>
+    <div class="modal-card">
+      <h3 id="exeModalTitle" data-i18n="exe.title">Select PLAY launcher</h3>
+      <p class="modal-sub" id="exeModalSub" data-i18n="exe.sub">Pick which EXE or BAT will be the PLAY button in Library.</p>
+      <div class="exe-list-wrap">
+        <ul id="exeList" class="exe-list"></ul>
+      </div>
+      <div class="modal-actions">
+        <button id="exeLater" class="btn hidden" data-i18n="exe.later">Later</button>
+        <button id="exeRescan" class="btn" data-i18n="exe.rescan">Rescan EXE</button>
+        <button id="exeConfirm" class="btn accent" data-i18n="exe.confirm">Set as PLAY</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Announcement Modal -->
+  <div id="announcementModal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop"></div>
+    <div class="modal-card announcement-card">
+      <h3 data-i18n="announce.title">Announcement</h3>
+      <div id="announcementBody" class="announcement-body"></div>
+      <div class="modal-actions">
+        <button id="announcementOk" class="btn accent" data-i18n="announce.ok">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirm Modal -->
+  <div id="confirmModal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop"></div>
+    <div class="modal-card confirm-card">
+      <h3 id="confirmTitle" data-i18n="confirm.title">Confirm</h3>
+      <p id="confirmMessage" class="modal-sub"></p>
+      <div class="modal-actions">
+        <button id="confirmCancel" class="btn" data-i18n="confirm.cancel">Cancel</button>
+        <button id="confirmOk" class="btn accent danger" data-i18n="confirm.delete">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- License / Activation Modal -->
+  <div id="licenseModal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-backdrop"></div>
+    <div class="modal-card license-card">
+      <h3 data-i18n="license.title">Activation Required</h3>
+      <p id="licenseMessage" class="modal-sub" data-i18n="license.message">
+        This device is not activated. Copy your registration code and send it to the QuickPlay seller to activate before downloading games.
+      </p>
+      <label class="label" for="licenseCode" data-i18n="license.codeLabel">Registration Code</label>
+      <input id="licenseCode" class="input license-code-input" type="text" readonly />
+      <label class="label hidden" id="licenseFpLabel" for="licenseFp" data-i18n="license.fpLabel">Device Fingerprint</label>
+      <input id="licenseFp" class="input license-code-input hidden" type="text" readonly />
+      <p id="licenseCopyStatus" class="modal-sub hidden"></p>
+      <div class="modal-actions">
+        <button id="licenseClose" class="btn" data-i18n="license.close">Close</button>
+        <button id="licenseCopyFp" class="btn hidden" data-i18n="license.copy">Copy Fingerprint</button>
+        <button id="licenseCopyAll" class="btn accent hidden" data-i18n="license.copyAll">Copy Both</button>
+        <button id="licenseCopy" class="btn accent" data-i18n="license.copy">Copy Code</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Big Picture — Steam Deck rehome-style launcher -->
+  <div id="bigPicture" class="big-picture hidden" aria-hidden="true">
+    <div class="bp-bg" aria-hidden="true">
+      <img id="bpBgA" class="bp-bg-img" alt="" />
+      <img id="bpBgB" class="bp-bg-img" alt="" />
+      <div class="bp-bg-overlay"></div>
+    </div>
+    <header class="bp-topbar">
+      <span class="bp-brand" data-i18n="bigpicture.brand">My Library</span>
+      <button type="button" id="bpClose" class="bp-close" aria-label="Close">✕</button>
+    </header>
+    <div class="bp-body">
+      <div class="bp-hero-zone">
+        <h2 id="bpSelectedTitle" class="bp-hero-title"></h2>
+      </div>
+      <div class="bp-deck">
+        <div class="bp-deck-inner">
+          <div class="bp-carousel-viewport">
+            <div id="bpCarousel" class="bp-carousel">
+              <div id="bpTrack" class="bp-track"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <footer class="bp-footer">
+      <div class="bp-footer-left">
+        <span class="bp-menu-label" data-i18n="bigpicture.menu">QuickPlay Menu</span>
+      </div>
+      <div class="bp-footer-right">
+        <span class="bp-hint"><span class="bp-hint-key bp-key-menu">☰</span> <span data-i18n="bigpicture.options">Options</span></span>
+        <span class="bp-hint"><span class="bp-hint-key bp-key-a">A</span> <span data-i18n="bigpicture.select">Play</span></span>
+        <span class="bp-hint"><span class="bp-hint-key bp-key-b">B</span> <span data-i18n="bigpicture.back">Back</span></span>
+      </div>
+    </footer>
+  </div>
+
+  <div id="downloadDock" class="download-dock hidden" aria-live="polite">
+    <div class="dock-inner" id="downloadDockInner"></div>
+  </div>
+
+  <footer class="app-footer">
+    <button type="button" class="footer-follow" id="followPageBtn">
+      <span data-i18n="footer.follow">FOLLOW OUR PAGE (CLICK/TAP HERE) :</span>
+      <span class="footer-follow-brand">HAMMER STEAM PAGE</span>
+    </button>
+  </footer>
+
+  <script src="/static/gamepad.js"></script>
+  <script src="/static/bigpicture.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>

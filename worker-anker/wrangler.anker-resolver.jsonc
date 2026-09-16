@@ -1,0 +1,28 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "anker-resolver",
+  "main": "src/anker-resolver/index.js",
+  "compatibility_date": "2026-07-08",
+  "account_id": "1f3d8591d5ce5b25bb355660031673b0",
+  "workers_dev": true,
+
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+
+  "vars": {
+    "KV_LITE_MODE": "true",
+    "SIGNATURE_WINDOW_SECONDS": "120",
+    "RATE_LIMIT_PER_MINUTE": "20",
+    "QUICKPLAY_HWID_OWNER": "hammerwebsite12",
+    "QUICKPLAY_HWID_REPO": "quickplayusr"
+  },
+
+  "kv_namespaces": [
+    {
+      "binding": "ANKER_KV",
+      "id": "bd99d9dc71bc44bf982adb5fded5c30f"
+    }
+  ]
+}

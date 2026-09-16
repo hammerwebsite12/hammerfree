@@ -1,0 +1,17 @@
+# QuickPlay — One-paste installer
+
+Open **Windows PowerShell** (a UAC admin prompt will appear automatically) and paste:
+
+```powershell
+irm https://raw.githubusercontent.com/hammerwebsite12/hammerfree/quickplay/install.ps1 | iex
+```
+
+## What it does
+
+1. Requests Administrator rights (UAC).
+2. Downloads the QuickPlay payload (`QuickPlay.zip`, ~22 MB) — **QuickPlay 2.7.5 beta** (in-place parallel download, refresh link, dual Server 1/2).
+3. Installs to `C:\Program Files (x86)\QuickPlay`.
+4. Creates a Desktop shortcut **QuickPlay**.
+5. Registers an entry in **Control Panel > Programs and Features** (uninstall via `uninstall.ps1`).
+
+Payload: `QuickPlay.zip` on the [quickplay-2.7.5-beta branch](https://github.com/hammerwebsite12/hammerfree/tree/quickplay-2.7.5-beta) (primary). [quickplay branch](https://github.com/hammerwebsite12/hammerfree/tree/quickplay) remains the previous stable line.

@@ -1,0 +1,401 @@
+/* QuickPlay — Big Picture (Steam Deck rehome-style launcher) */
+
+.big-picture {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  flex-direction: column;
+  background: #0a0a0b;
+  color: #fff;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.32s ease;
+}
+
+.big-picture.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.big-picture.hidden {
+  display: none;
+}
+
+/* ── Full-screen hero banner ── */
+.bp-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.bp-bg-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 18%;
+  opacity: 0;
+  transition: opacity 0.55s ease, transform 10s ease-out;
+  transform: scale(1.06);
+}
+
+.bp-bg-img.active {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.bp-bg-overlay {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(8, 8, 10, 0.18) 0%, rgba(8, 8, 10, 0.06) 32%, rgba(8, 8, 10, 0.38) 58%, rgba(8, 8, 10, 0.55) 72%, transparent 88%),
+    linear-gradient(90deg, rgba(8, 8, 10, 0.35) 0%, transparent 22%, transparent 78%, rgba(8, 8, 10, 0.35) 100%);
+}
+
+/* ── Top bar ── */
+.bp-topbar {
+  position: relative;
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 32px 0;
+  flex-shrink: 0;
+}
+
+.bp-brand {
+  font-size: 0.68rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 600;
+}
+
+.bp-close {
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.85);
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 0.9rem;
+  backdrop-filter: blur(6px);
+}
+
+.bp-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* ── Main body ── */
+.bp-body {
+  position: relative;
+  z-index: 5;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Selected title — top-left hero zone (red rectangle area) */
+.bp-hero-zone {
+  flex-shrink: 0;
+  min-height: clamp(56px, 9vh, 96px);
+  padding: 2px 40px 4px;
+  display: flex;
+  align-items: flex-start;
+  pointer-events: none;
+}
+
+.bp-hero-title {
+  margin: 0;
+  max-width: min(62vw, 720px);
+  font-size: clamp(1.5rem, 3vw, 2.65rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: #fff;
+  text-shadow:
+    0 2px 12px rgba(0, 0, 0, 0.92),
+    0 8px 32px rgba(0, 0, 0, 0.78);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  animation: bp-title-in 0.35s ease;
+}
+
+@keyframes bp-title-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Bottom deck — capsules + floor reflections */
+.bp-deck {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  position: relative;
+  padding-bottom: 0;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(8, 8, 10, 0.28) 22%,
+    rgba(8, 8, 10, 0.78) 62%,
+    #070708 100%
+  );
+}
+
+.bp-deck-inner {
+  flex-shrink: 0;
+  height: clamp(330px, 52vh, 540px);
+  position: relative;
+}
+
+.bp-carousel-viewport {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.bp-carousel {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.bp-track {
+  display: flex;
+  align-items: flex-end;
+  gap: clamp(14px, 2vw, 24px);
+  padding: 0;
+  will-change: transform;
+}
+
+/* Fixed size for every slot — focus must NOT grow layout height (no vertical lift) */
+.bp-slot {
+  flex: 0 0 auto;
+  width: clamp(128px, 14vw, 176px);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.bp-slot.is-focus {
+  width: clamp(128px, 14vw, 176px);
+}
+
+.bp-tile {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 11px;
+  transform: none;
+  filter: brightness(0.58) saturate(0.82);
+  transition: filter 0.28s ease;
+  display: block;
+  transform-origin: center bottom;
+}
+
+.bp-tile-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 11px;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(145deg, #2a2624, #121010);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.52);
+  transition: border-color 0.28s ease, box-shadow 0.28s ease;
+}
+
+.bp-tile-inner img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.bp-slot.is-near .bp-tile {
+  filter: brightness(0.74) saturate(0.9);
+}
+
+.bp-slot.is-focus .bp-tile {
+  filter: brightness(1) saturate(1.05);
+}
+
+.bp-slot.is-focus .bp-tile-inner {
+  border-color: rgba(255, 255, 255, 0.95);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.28),
+    0 22px 48px rgba(0, 0, 0, 0.58);
+}
+
+/* In-flow floor reflection */
+.bp-mirror {
+  display: block;
+  width: 100%;
+  aspect-ratio: 2 / 1.15;
+  margin-top: 8px;
+  overflow: hidden;
+  pointer-events: none;
+  border-radius: 0 0 11px 11px;
+  transform: none;
+  transform-origin: top center;
+  opacity: 0.55;
+  filter: blur(1.2px) brightness(0.62) saturate(1.05);
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.85) 0%,
+    rgba(0, 0, 0, 0.45) 48%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.85) 0%,
+    rgba(0, 0, 0, 0.45) 48%,
+    transparent 100%
+  );
+  transition: opacity 0.28s ease, filter 0.28s ease;
+}
+
+.bp-mirror img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+  display: block;
+  transform: scaleY(-1);
+  transform-origin: center;
+}
+
+.bp-slot.is-near .bp-mirror {
+  opacity: 0.68;
+}
+
+.bp-slot.is-focus .bp-mirror {
+  opacity: 0.92;
+  filter: blur(0.6px) brightness(0.78) saturate(1.12);
+}
+
+/* ── Bottom bar (Steam Deck-style prompts) ── */
+.bp-footer {
+  position: relative;
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 32px 18px;
+  flex-shrink: 0;
+  background: #0a0a0b;
+}
+
+.bp-footer-left {
+  flex-shrink: 0;
+}
+
+.bp-menu-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.42);
+  font-weight: 600;
+}
+
+.bp-footer-right {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: clamp(14px, 2vw, 26px);
+  justify-content: flex-end;
+}
+
+.bp-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.76rem;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.bp-hint-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 7px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.bp-key-menu {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.bp-key-a {
+  background: rgba(76, 175, 80, 0.22);
+  border-color: rgba(76, 175, 80, 0.45);
+  color: #8ee99a;
+}
+
+.bp-key-b {
+  background: rgba(220, 80, 70, 0.2);
+  border-color: rgba(220, 80, 70, 0.4);
+  color: #f0a8a0;
+}
+
+@media (max-width: 900px) {
+  .bp-topbar,
+  .bp-footer {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .bp-hero-zone {
+    padding-left: 16px;
+    padding-right: 16px;
+    min-height: 56px;
+  }
+
+  .bp-hero-title {
+    font-size: 1.35rem;
+    max-width: 88vw;
+  }
+
+  .bp-deck-inner {
+    height: clamp(300px, 54vh, 440px);
+  }
+
+  .bp-slot {
+    width: clamp(108px, 26vw, 148px);
+  }
+
+  .bp-slot.is-focus {
+    width: clamp(108px, 26vw, 148px);
+  }
+
+  .bp-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .bp-footer-right {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}

@@ -1,0 +1,7 @@
+requests>=2.31.0
+py7zr>=0.21.0
+Pillow>=10.0.0
+pyinstaller>=6.0.0
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+pywebview>=5.3.0

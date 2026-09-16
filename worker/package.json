@@ -1,0 +1,14 @@
+{
+  "name": "playzip-resolver",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Server-side download-link resolver. Keeps the resolve recipe off the client.",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail"
+  },
+  "devDependencies": {
+    "wrangler": "^4.108.0"
+  }
+}

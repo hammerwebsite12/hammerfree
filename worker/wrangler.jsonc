@@ -1,0 +1,31 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "dl-resolver",
+  "main": "src/index.js",
+  "compatibility_date": "2026-07-08",
+  "account_id": "1f3d8591d5ce5b25bb355660031673b0",
+
+  // Serve on https://playzip-resolver.<your-subdomain>.workers.dev by default.
+  // To use a custom domain, remove workers_dev and add a "routes" entry, e.g.:
+  //   "routes": [{ "pattern": "api.yourdomain.com/resolve", "custom_domain": true }]
+  "workers_dev": true,
+
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+
+  // Non-secret tunables. Secrets (APP_TOKEN, SIGNING_SECRET, PLAYZIP_SECRET_KEY,
+  // PLAYZIP_AUTH_COOKIE) are set via `wrangler secret put` / `secret bulk`.
+  "vars": {
+    "KV_LITE_MODE": "true",
+    "SIGNATURE_WINDOW_SECONDS": "120",
+    "RATE_LIMIT_PER_MINUTE": "20",
+    "QUICKPLAY_HWID_OWNER": "hammerwebsite12",
+    "QUICKPLAY_HWID_REPO": "quickplayusr"
+  },
+
+  "kv_namespaces": [
+    { "binding": "PZ_KV", "id": "54f59a4ca729454598ce4fbd171578b9" }
+  ]
+}
