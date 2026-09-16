@@ -2273,11 +2273,10 @@ async function init() {
     state.config = cfg;
     state.categories = cats.categories || [];
     const appTitle = cfg.app_title || `QuickPlay ${cfg.version || ""}`.trim();
-    if (appTitle) {
-      document.title = appTitle;
-      const brand = $("#appBrand") || document.querySelector(".brand");
-      if (brand) brand.textContent = appTitle;
-    }
+    const appBrand = cfg.app_brand || "QuickPlay";
+    if (appTitle) document.title = appTitle;
+    const brand = $("#appBrand") || document.querySelector(".brand");
+    if (brand) brand.textContent = appBrand;
     $("#rootHint").textContent = t("status.gamesFolder", { dir: cfg.download_dir });
     renderCategoryBar();
   } catch (_) {}

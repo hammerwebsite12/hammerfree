@@ -4,6 +4,11 @@
 import os
 import glob
 
+try:
+    import certifi
+except ImportError:
+    certifi = None
+
 block_cipher = None
 SPECPATH = os.path.dirname(os.path.abspath(SPEC))
 obf_dir = os.path.join(SPECPATH, "build", "pyarmor")
@@ -23,12 +28,15 @@ a = Analysis(
     binaries=[],
     # Do not bundle anker/ as loose datas — onefile extracts datas to %LOCALAPPDATA%
     # and would ship FORMULA.md, README.md, and other dev docs. Collect via hiddenimports.
-    datas=[("web", "web"), ("vendor/7zip", "vendor/7zip"), ("quickplay.ico", ".")] + rt_datas,
+    datas=[("web", "web"), ("vendor/7zip", "vendor/7zip"), ("quickplay.ico", ".")]
+    + ([(certifi.where(), "certifi")] if certifi else [])
+    + rt_datas,
     hiddenimports=[
         "pyarmor_runtime_000000",
         "worker_tls",
         "gamepad_input",
         "client_secrets",
+        "playzip_api",
         "store_manager",
         "anker",
         "anker.anker_api",

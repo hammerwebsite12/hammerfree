@@ -17,14 +17,14 @@ if (Test-Path $stagingRoot) {
     Remove-Item -Recurse -Force $stagingRoot -ErrorAction SilentlyContinue
 }
 
+# Keep catalog HTTP clients plain — PyArmor on large modules can hang browse in the
+# frozen EXE (trial runtime). Signing secrets stay in obfuscated client_secrets.py.
 $modules = @(
     "client_secrets.py",
     "hwid_obfuscation.py",
     "device_fingerprint.py",
     "hardware_snapshot.py",
-    "license_manager.py",
-    "playzip_api.py",
-    "anker\anker_api.py"
+    "license_manager.py"
 )
 
 Write-Host "Obfuscating $($modules.Count) modules..." -ForegroundColor Cyan
@@ -34,19 +34,5 @@ pyarmor gen -O $out --obf-code 1 @modules 2>&1 | ForEach-Object { Write-Host $_ 
 $code = $LASTEXITCODE
 $ErrorActionPreference = $prevEap
 if ($code -ne 0) { throw "PyArmor obfuscation failed (exit $code)." }
-
-$obfAnkerPkg = Join-Path $out "anker"
-New-Item -ItemType Directory -Path $obfAnkerPkg -Force | Out-Null
-$ankerNames = @("anker_api.py")
-foreach ($name in $ankerNames) {
-    foreach ($candidate in @(
-        (Join-Path $out $name),
-        (Join-Path $out "anker\$name")
-    )) {
-        if (Test-Path $candidate) {
-            Move-Item -Force $candidate (Join-Path $obfAnkerPkg $name)
-        }
-    }
-}
 
 Write-Host "Obfuscated output: build\pyarmor" -ForegroundColor Green

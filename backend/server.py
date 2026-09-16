@@ -25,6 +25,7 @@ from announcement import fetch_announcement
 from landing_page import resolve_landing_page_url
 from playzip_api import PlayZipClient
 from settings_manager import (
+    APP_BRAND,
     APP_TITLE,
     APP_VERSION,
     MAX_CONNECTIONS,
@@ -209,6 +210,7 @@ async def api_config():
         "app_root": app_root_dir(),
         "download_dir": s.download_dir,
         "version": APP_VERSION,
+        "app_brand": APP_BRAND,
         "app_title": APP_TITLE,
         "platform": sys.platform,
         "is_windows": is_windows(),
@@ -297,7 +299,9 @@ async def api_browse(
     sort: str = Query("views"),
     category: str = Query("all"),
 ):
-    games, meta = get_store().browse(page=page, sort=sort, category=category)
+    games, meta = await asyncio.to_thread(
+        get_store().browse, page, sort, category
+    )
     return {
         "games": [
             {"game_id": g.game_id, "title": g.title, "image_url": g.image_url}
@@ -312,7 +316,7 @@ async def api_browse(
 
 @app.get("/api/search")
 async def api_search(q: str = Query("")):
-    games, meta = get_store().search(q)
+    games, meta = await asyncio.to_thread(get_store().search, q)
     return {
         "games": [
             {"game_id": g.game_id, "title": g.title, "image_url": g.image_url}

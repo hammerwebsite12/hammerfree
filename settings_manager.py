@@ -20,8 +20,9 @@ DEFAULT_CONNECTIONS = 8
 
 SUPPORTED_LANGUAGES = ("en", "zh", "es", "tl")
 DEFAULT_LANGUAGE = "en"
-APP_VERSION = "2.7.5-beta"
-APP_TITLE = "QuickPlay 2.7.5 beta"
+APP_VERSION = "2.7.5"
+APP_BRAND = "QuickPlay"
+APP_TITLE = "QuickPlay 2.7.5"
 
 STORE_SERVER1 = "server1"
 STORE_SERVER2 = "server2"
@@ -235,5 +236,6 @@ class SettingsManager:
         data["supported_languages"] = list(SUPPORTED_LANGUAGES)
         data["store_options"] = list(STORE_OPTIONS)
         data["app_version"] = APP_VERSION
+        data["app_brand"] = APP_BRAND
         data["app_title"] = APP_TITLE
         return data

@@ -10,6 +10,21 @@ import os
 import socket
 import subprocess
 import sys
+
+
+def _ensure_ssl_bundle() -> None:
+    """PyInstaller onefile: ensure requests/urllib can verify HTTPS in the frozen EXE."""
+    try:
+        import certifi
+    except ImportError:
+        return
+    ca = certifi.where()
+    os.environ.setdefault("SSL_CERT_FILE", ca)
+    os.environ.setdefault("REQUESTS_CA_BUNDLE", ca)
+
+
+_ensure_ssl_bundle()
+
 import threading
 import time
 import urllib.error
