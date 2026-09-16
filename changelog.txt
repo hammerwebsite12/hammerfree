@@ -1,6 +1,15 @@
 QuickPlay Changelog
 ===================
 
+v2.7.5 — 2026-09-16 (installer payload refresh)
+----------------------------------------------
+- Post-download extract fix: finished archives are no longer deleted before 7-Zip runs
+- Game runtime installer: VC++ 2008–2022 + DirectX June 2010 (Settings)
+- Stale browse/search after idle: catalog session renew + retry
+- Download API no longer blocks browse/redist while a download is starting
+- Android-style game detail extras load in the background
+- PyArmor-protected build (latest dist/QuickPlay.exe)
+
 v2.7.4 — 2026-08-31 (installer payload refresh)
 ----------------------------------------------
 - First-run activation dialog now uses themed in-app modal with Copy Code / Copy Both
