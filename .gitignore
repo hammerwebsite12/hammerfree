@@ -9,9 +9,9 @@ __pycache__/
 .venv/
 .build-python/
 
-# Local app data (per-machine)
-settings.json
-library.json
+# Local app data at repo root (per-machine); backups live under private-backup/
+/settings.json
+/library.json
 
 # Runtime / user data lives in dist and the download folder.
 # Publish only the built EXE, not settings/library/logs/games.

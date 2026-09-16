@@ -1,0 +1,14 @@
+{
+  "download_dir": "D:\\My Drive\\Workspace\\plazipanker",
+  "connections": 8,
+  "show_logs": true,
+  "verification_window_full": false,
+  "defender_exclusion": true,
+  "defender_status": "",
+  "disable_announcement_on_startup": false,
+  "language": "en",
+  "hardware_snapshot_submitted": false,
+  "first_license_check_done": false,
+  "store": "server1",
+  "controller_enabled": false
+}

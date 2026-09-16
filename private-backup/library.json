@@ -1,0 +1,22 @@
+{
+  "games": [
+    {
+      "entry_id": "845e0d22-a3d3-412a-83f0-efd84064f412",
+      "title": "How to Fish",
+      "game_id": "3461",
+      "install_dir": "C:\\Users\\user\\Desktop\\playzipanker\\dist\\How to Fish",
+      "exe_path": "C:\\Users\\user\\Desktop\\playzipanker\\dist\\How to Fish\\How to Fish\\How to Fish.exe",
+      "image_url": "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/4001890/280684ffc5f512083f4e81a551df2b9ae3ff71db/library_capsule_2x.jpg",
+      "added_at": 1789550497.5828662
+    },
+    {
+      "entry_id": "b0c28bba-999a-4285-baed-de61a4e0f4b0",
+      "title": "Prince of Persia The Lost Crown",
+      "game_id": "3516",
+      "install_dir": "C:\\Users\\user\\Desktop\\playzipanker\\dist\\Prince of Persia The Lost Crown",
+      "exe_path": "C:\\Users\\user\\Desktop\\playzipanker\\dist\\Prince of Persia The Lost Crown\\Prince of Persia The Lost Crown\\TheLostCrown.exe",
+      "image_url": "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2751000/library_600x900_2x.jpg",
+      "added_at": 1789549721.3440228
+    }
+  ]
+}
