@@ -1,5 +1,33 @@
 # QuickPlay Release Notes
 
+## v2.7.8 — September 20, 2026
+
+### Download UX
+- **Instant pre-allocation** — multi-GB `.part` files no longer block on Windows zero-fill during "Preparing download file…"
+- **Preparing indicator** — green progress bar, reserved size, free disk display
+- **Readable sizes** — e.g. `1.2 GB out of 68 GB` (i18n: en / zh / es / tl)
+- **Interrupted downloads** — after crash/cancel, choose **Resume** or **Delete partial files** to free disk space
+
+### Extract
+- **Disk usage** while unpacking (free / total), throttled polling
+
+### Docs & ports
+- `PORT_AGENTIC_INSTRUCTION.md` — detailed playbook for Android (GameHub) and SteamOS (`DUALSERVER-STEAMOS-PORT`)
+
+### App branding
+- Window title: **QuickPlay 2.7.8** (`APP_VERSION = 2.7.8`)
+
+### Build & distribution
+- Rebuilt `dist/QuickPlay.exe` via `build-protected.ps1`
+- Source: `quickplay-2.7.8-beta` on private [dvahana2424-web/playzipdl](https://github.com/dvahana2424-web/playzipdl)
+- Public installer: [quickplay-v2.7.8](https://github.com/hammerwebsite12/hammerfree/releases/tag/quickplay-v2.7.8)
+
+```powershell
+irm https://raw.githubusercontent.com/hammerwebsite12/hammerfree/quickplay/install.ps1 | iex
+```
+
+---
+
 ## v2.7.5 — September 16, 2026
 
 ### Fixes & features (this release)

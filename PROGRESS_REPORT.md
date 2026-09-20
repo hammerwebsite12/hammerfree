@@ -1,13 +1,28 @@
 # QuickPlay Progress Report
 
-**Date:** September 16, 2026  
-**Version:** **2.7.5** (`APP_VERSION = 2.7.5`, `APP_TITLE = QuickPlay 2.7.5`)  
+**Date:** September 20, 2026  
+**Version:** **2.7.8** (`APP_VERSION = 2.7.8`, `APP_TITLE = QuickPlay 2.7.8`)  
 **Repo:** [dvahana2424-web/playzipdl](https://github.com/dvahana2424-web/playzipdl) (private)  
-**Branch:** `quickplay-2.7.5-beta`
+**Branch:** `quickplay-2.7.8-beta`
 
 ## Summary
 
-QuickPlay 2.7.5 is the Windows desktop build (Server 1 / Server 2 catalogs, Worker-backed downloads, protected EXE). This report covers the **September 16, 2026** session: game runtime installer, browse idle fixes, post-download extract bug fix, and UX polish.
+QuickPlay 2.7.8 is the Windows desktop build (Server 1 / Server 2 catalogs, Worker-backed downloads, protected EXE). This report covers the **September 20, 2026** session: instant `.part` pre-allocation, preparing/download progress UX, disk usage during prepare and extract, interrupted-download recovery prompt, public installer **2.7.8**, and `PORT_AGENTIC_INSTRUCTION.md` for Android/SteamOS ports.
+
+## 2.7.8 session (2026-09-20)
+
+| Area | Status | Notes |
+|------|--------|-------|
+| **Preparing download UX** | Done | Windows `truncate()` zero-filled 68 GB before download; replaced with seek+write sparse sizing (~0 s vs minutes). Green preparing bar; `on_prepare` reports reserved bytes + disk free/total. |
+| **Progress text** | Done | `X out of Y` size labels; extract line separated from download byte summary (fixes mixed 96% + "download complete"). |
+| **Partial-byte accounting** | Done | Progress from `.part.progress` / `partial_bytes_for_dest()` — not raw `.part` size on disk. |
+| **Interrupted download recovery** | Done | Startup holds partials; Downloads banner **Resume** / **Delete partial files**; `GET/POST /api/downloads/recovery`; held paths exempt from orphan sweep. |
+| **Extract disk usage** | Done | `disk_usage_for_path` polled ≤1 Hz during 7-Zip extract; shown in task card + dock. |
+| **Port playbook** | Done | `PORT_AGENTIC_INSTRUCTION.md` — Android (merge-phase progress) + SteamOS (2.6.8 → 2.7.8 merge guide). |
+| **Protected EXE** | Done | `dist/QuickPlay.exe` via `build-protected.ps1`. |
+| **Public one-paste installer** | Done | `hammerwebsite12/hammerfree` `quickplay` — `install.ps1` **2.7.8**, release [quickplay-v2.7.8](https://github.com/hammerwebsite12/hammerfree/releases/tag/quickplay-v2.7.8). |
+
+## 2.7.5 session (2026-09-16)
 
 ## 2.7.5 session (2026-09-16)
 
@@ -22,13 +37,14 @@ QuickPlay 2.7.5 is the Windows desktop build (Server 1 / Server 2 catalogs, Work
 | **Protected EXE rebuild** | Done | `dist/QuickPlay.exe` via `build-protected.ps1`; `release.spec` includes `http_catalog`. |
 | **Public one-paste installer** | Done | `hammerwebsite12/hammerfree` branch `quickplay` — `install.ps1` v2.7.5, `QuickPlay.zip` from latest `dist/QuickPlay.exe`; release [quickplay-v2.7.5](https://github.com/hammerwebsite12/hammerfree/releases/tag/quickplay-v2.7.5). |
 
-## Download resume (unchanged behavior, documented)
+## Download resume (2.7.8)
 
 | Stage | Auto-resume on restart? |
 |-------|-------------------------|
-| In-progress download (`.part` / `.quickplay_downloads.json` in **download folder**) | **Yes** — fresh signed URL, resume bytes |
+| In-progress download with partial files on disk | **Prompt** — user chooses **Resume** or **Delete partial files** (reclaim space) |
+| Queue entry without partials | **Yes** — auto fresh signed URL |
 | Wait queue | **Yes** |
-| Extract | **No full job** — zip is **not** deleted mid-extract after fix; failed extract keeps archive for manual retry |
+| Extract | **No full job** — archive kept until extract succeeds |
 
 ## Completed (prior releases)
 
@@ -45,6 +61,19 @@ QuickPlay 2.7.5 is the Windows desktop build (Server 1 / Server 2 catalogs, Work
 - `client_secrets.py` — match Worker secrets; committed on **private** `playzipdl` only
 - Standard: `.\build.ps1` · Protected: `.\build-protected.ps1` (PyArmor on licensing modules)
 - Close running QuickPlay before rebuild (WinError 5 if EXE locked)
+
+## File changelog (2026-09-20 session)
+
+| File | Change |
+|------|--------|
+| `idm_downloader.py` | Fast `.part` allocation; `on_prepare`; `partial_bytes_for_dest` / `part_disk_bytes`; multi-conn `_prepare_resume` fix |
+| `download_service.py` | `prepare_*` / `disk_*` fields; recovery hold; extract disk polling; recovery API helpers |
+| `backend/server.py` | `/api/downloads/recovery` |
+| `web/app.js` / `style.css` / `i18n.js` | Preparing bar, disk usage, recovery banner, `formatExtractMeta` |
+| `settings_manager.py` | `APP_VERSION` 2.7.8 |
+| `PORT_AGENTIC_INSTRUCTION.md` | Android + SteamOS port guide |
+| `installer-publish/*` | Installer 2.7.8 + `QuickPlay.zip` |
+| `dist/QuickPlay.exe` | Protected 2.7.8 build |
 
 ## File changelog (2026-09-16 session)
 
