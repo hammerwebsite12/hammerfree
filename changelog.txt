@@ -1,6 +1,15 @@
 QuickPlay Changelog
 ===================
 
+v2.7.8 — 2026-09-20 (installer payload refresh)
+----------------------------------------------
+- Instant multi-connection .part pre-allocation (no multi-minute zero-fill wait on Windows)
+- Preparing download: green progress bar, reserved size, free disk display
+- Human download size text (e.g. 1.2 GB out of 68 GB)
+- After crash/cancel: Resume or Delete partial files prompt (reclaim disk space)
+- Extract phase shows disk free/total while unpacking
+- PyArmor-protected build (latest dist/QuickPlay.exe)
+
 v2.7.5 — 2026-09-16 (installer payload refresh)
 ----------------------------------------------
 - Post-download extract fix: finished archives are no longer deleted before 7-Zip runs
