@@ -19,7 +19,13 @@ from download_queue import DownloadQueueStore, QueuedDownload
 from download_wait_queue import DownloadWaitQueueStore, WaitQueueItem
 from pending_exe_store import PendingExeStore, StoredExePicker
 from exe_scanner import display_name, launch_play_target, pick_best_exe, scan_executables
-from idm_downloader import DownloadState, DownloadTask, IDMDownloader
+from idm_downloader import (
+    DownloadState,
+    DownloadTask,
+    IDMDownloader,
+    partial_bytes_for_dest,
+    part_disk_bytes,
+)
 from device_fingerprint import get_device_fingerprint
 from library_artwork import resolve_library_artwork, should_refresh_artwork
 from library_manager import LibraryEntry, LibraryManager
@@ -65,6 +71,10 @@ class TaskView:
     extract_current: int = 0
     extract_total: int = 100
     extract_message: str = ""
+    prepare_current: int = 0
+    prepare_total: int = 0
+    disk_free: int = 0
+    disk_total: int = 0
     status_message: str = ""
     rate_limit_seconds: int = 0
     verify_countdown: bool = False
@@ -129,6 +139,8 @@ class DownloadService:
         self._pending_exe: dict[str, ExePickerPending] = {}
         self._cancelled_pending: set[str] = set()
         self._refresh_in_flight: set[str] = set()
+        self._recovery_hold: dict[str, QueuedDownload] = {}
+        self._recovery_payloads: list[dict[str, Any]] = []
         self._load_pending_exe_from_disk()
         self._warm_library_cover_cache()
         self._warm_library_banner_cache()
@@ -311,6 +323,7 @@ class DownloadService:
         force_connections: int | None = None,
         status_message: str = "Resolving download link...",
         partial_bytes: int = 0,
+        partial_total: int = 0,
     ) -> None:
         pending_view = TaskView(
             task_id=pending_id,
@@ -321,6 +334,7 @@ class DownloadService:
             phase="resolving",
             status_message=status_message,
             downloaded=partial_bytes,
+            total_size=partial_total,
             dest_path=force_dest or "",
         )
         with self._lock:
@@ -411,6 +425,7 @@ class DownloadService:
 
         self.logger.info(f"Checking {len(pending)} saved download(s) for resume...")
         to_resume: list[QueuedDownload] = []
+        recovery_items: list[QueuedDownload] = []
         for item in pending:
             part_path = item.dest_path + ".part"
             chunk_files = glob.glob(glob.escape(part_path) + ".part*")
@@ -427,12 +442,29 @@ class DownloadService:
                 store.remove(item.dest_path)
                 continue
 
-            to_resume.append(item)
+            if has_partial:
+                recovery_items.append(item)
+            else:
+                to_resume.append(item)
 
-        if not to_resume:
+        if recovery_items:
+            payloads = [self._recovery_payload(item) for item in recovery_items]
+            with self._lock:
+                self._recovery_hold = {item.dest_path: item for item in recovery_items}
+                self._recovery_payloads = payloads
+            self.emit("download_recovery", {"items": payloads})
+            self.logger.info(
+                f"Found {len(recovery_items)} interrupted download(s) — waiting for Resume or Delete"
+            )
+
+        if not to_resume and not recovery_items:
             swept = self._sweep_orphaned_part_files()
             if swept:
                 self.logger.info(f"Removed {swept} orphaned partial download file(s)")
+            self._advance_queue()
+            return
+
+        if not to_resume:
             self._advance_queue()
             return
 
@@ -450,52 +482,7 @@ class DownloadService:
                 connections=extra.connections,
             )
 
-        item = first
-        part_path = item.dest_path + ".part"
-        chunk_files = glob.glob(glob.escape(part_path) + ".part*")
-        progress_path = part_path + ".progress"
-        single_partial = os.path.exists(part_path)
-        partial_bytes = 0
-        if os.path.isfile(progress_path):
-            try:
-                import json
-
-                with open(progress_path, encoding="utf-8") as handle:
-                    raw = json.load(handle)
-                done = raw.get("done")
-                if isinstance(done, list):
-                    partial_bytes = int(sum(int(x) for x in done))
-            except (OSError, json.JSONDecodeError, TypeError, ValueError):
-                partial_bytes = 0
-        elif single_partial and not chunk_files:
-            partial_bytes = os.path.getsize(part_path)
-        else:
-            for chunk in chunk_files:
-                try:
-                    partial_bytes += os.path.getsize(chunk)
-                except OSError:
-                    pass
-        if partial_bytes:
-            self.logger.info(
-                f"[{item.title}] Resuming download ({format_bytes(partial_bytes)} saved)"
-            )
-        else:
-            self.logger.info(f"[{item.title}] Resuming interrupted download")
-
-        game = GameResult(
-            game_id=item.game_id,
-            title=item.title,
-            image_url=item.image_url,
-        )
-        pending_id = f"resume-{item.game_id}-{uuid.uuid4().hex[:8]}"
-        self._start_resolve_thread(
-            pending_id,
-            game,
-            force_dest=item.dest_path,
-            force_connections=item.connections,
-            status_message="Resuming — getting fresh download link...",
-            partial_bytes=partial_bytes,
-        )
+        self._begin_resume_queued_item(first)
 
         swept = self._sweep_orphaned_part_files()
         if swept:
@@ -1019,6 +1006,9 @@ class DownloadService:
                 v.state = state
                 if state == DownloadState.ERROR.value:
                     v.speed = 0.0
+                if state == DownloadState.DOWNLOADING.value:
+                    v.prepare_current = 0
+                    v.prepare_total = 0
                 payload = asdict(v)
             self.emit("task_update", payload)
             if state == DownloadState.COMPLETED.value:
@@ -1040,10 +1030,33 @@ class DownloadService:
                         v.speed = 0.0
                 if message == DownloadState.CANCELLED.value:
                     return
+                if v.state == DownloadState.DOWNLOADING.value:
+                    v.prepare_current = 0
+                    v.prepare_total = 0
                 payload = asdict(v)
             self.emit("task_update", payload)
 
-        downloader = IDMDownloader(on_progress=on_progress, on_status=on_status)
+        def on_prepare(allocated: int, total: int, free_bytes: int, disk_total: int) -> None:
+            with self._lock:
+                v = self._task_views.get(task_id)
+                if not v or v.phase in ("resolving", "rate_limit"):
+                    return
+                if v.state in (DownloadState.CANCELLED.value, DownloadState.PAUSED.value):
+                    return
+                v.prepare_current = allocated
+                v.prepare_total = total
+                v.disk_free = free_bytes
+                v.disk_total = disk_total
+                if total > 0 and v.total_size <= 0:
+                    v.total_size = total
+                payload = asdict(v)
+            self.emit("task_update", payload)
+
+        downloader = IDMDownloader(
+            on_progress=on_progress,
+            on_status=on_status,
+            on_prepare=on_prepare,
+        )
         with self._lock:
             self._downloaders[task_id] = downloader
         downloader.start(task)
@@ -1312,6 +1325,95 @@ class DownloadService:
             return filename[:idx]
         return None
 
+    def _recovery_payload(self, item: QueuedDownload) -> dict[str, Any]:
+        downloaded, total = partial_bytes_for_dest(item.dest_path, item.connections)
+        return {
+            "dest_path": item.dest_path,
+            "game_id": item.game_id,
+            "title": item.title,
+            "image_url": item.image_url,
+            "connections": item.connections,
+            "downloaded": downloaded,
+            "total_size": total,
+            "disk_bytes": part_disk_bytes(item.dest_path),
+        }
+
+    def _begin_resume_queued_item(self, item: QueuedDownload) -> None:
+        partial_bytes, total_known = partial_bytes_for_dest(item.dest_path, item.connections)
+        if partial_bytes:
+            self.logger.info(
+                f"[{item.title}] Resuming download ({format_bytes(partial_bytes)} saved)"
+            )
+        else:
+            disk = part_disk_bytes(item.dest_path)
+            if disk:
+                self.logger.info(
+                    f"[{item.title}] Resuming interrupted download "
+                    f"({format_bytes(disk)} reserved on disk, "
+                    f"{format_bytes(partial_bytes)} verified bytes)"
+                )
+            else:
+                self.logger.info(f"[{item.title}] Resuming interrupted download")
+        game = GameResult(
+            game_id=item.game_id,
+            title=item.title,
+            image_url=item.image_url,
+        )
+        pending_id = f"resume-{item.game_id}-{uuid.uuid4().hex[:8]}"
+        self._start_resolve_thread(
+            pending_id,
+            game,
+            force_dest=item.dest_path,
+            force_connections=item.connections,
+            status_message="Resuming — getting fresh download link...",
+            partial_bytes=partial_bytes,
+            partial_total=total_known,
+        )
+
+    def list_recovery_downloads(self) -> list[dict[str, Any]]:
+        with self._lock:
+            return list(self._recovery_payloads)
+
+    def resume_interrupted_download(self, dest_path: str) -> dict[str, Any]:
+        dest_path = (dest_path or "").strip()
+        if not dest_path:
+            return {"ok": False, "error": "Missing dest_path"}
+        with self._lock:
+            item = self._recovery_hold.pop(dest_path, None)
+            if item:
+                self._recovery_payloads = [
+                    entry
+                    for entry in self._recovery_payloads
+                    if entry.get("dest_path") != dest_path
+                ]
+        if not item:
+            return {"ok": False, "error": "Interrupted download not found"}
+        self._begin_resume_queued_item(item)
+        self.emit("download_recovery", {"items": self.list_recovery_downloads()})
+        return {"ok": True}
+
+    def discard_interrupted_download(self, dest_path: str) -> dict[str, Any]:
+        dest_path = (dest_path or "").strip()
+        if not dest_path:
+            return {"ok": False, "error": "Missing dest_path"}
+        with self._lock:
+            item = self._recovery_hold.pop(dest_path, None)
+            if item:
+                self._recovery_payloads = [
+                    entry
+                    for entry in self._recovery_payloads
+                    if entry.get("dest_path") != dest_path
+                ]
+        if not item:
+            return {"ok": False, "error": "Interrupted download not found"}
+        self._queue_store().remove(dest_path)
+        self._cleanup_part_files(dest_path)
+        self._schedule_part_cleanup(dest_path, remove_final=True)
+        self.logger.info(f"[{item.title}] Partial download deleted — disk space reclaimed")
+        self.emit("download_recovery", {"items": self.list_recovery_downloads()})
+        self._advance_queue()
+        return {"ok": True}
+
     def _protected_download_dest_paths(self) -> set[str]:
         protected: set[str] = set()
         for item in self._queue_store().load():
@@ -1332,6 +1434,10 @@ class DownloadService:
             return 0
 
         protected = self._protected_download_dest_paths()
+        with self._lock:
+            for item in self._recovery_hold.values():
+                if item.dest_path:
+                    protected.add(os.path.normpath(item.dest_path))
         by_dest: dict[str, list[str]] = {}
         try:
             entries = os.listdir(root)
@@ -1454,11 +1560,26 @@ class DownloadService:
         view.phase = "extract"
         view.install_dir = install_dir
         view.extract_message = "Preparing extraction..."
+        extract_usage = disk_usage_for_path(install_dir)
+        view.disk_free = int(extract_usage["free_bytes"])
+        view.disk_total = int(extract_usage["total_bytes"])
         self.emit("task_update", asdict(view))
         self.logger.info(f"[{game.title}] Starting extraction → {install_dir}")
 
+        # Extraction can eat tens of GB; refresh free space at most once a second
+        # so the UI shows disk pressure without a stat() call per progress line.
+        last_disk_poll = [0.0]
+
         def on_extract_progress(current: int, total: int, message: str) -> None:
             self.logger.info(f"[{game.title}] {message}")
+            now = time.time()
+            usage = None
+            if now - last_disk_poll[0] >= 1.0:
+                last_disk_poll[0] = now
+                try:
+                    usage = disk_usage_for_path(install_dir)
+                except OSError:
+                    usage = None
             with self._lock:
                 v = self._task_views.get(task_id)
                 if not v:
@@ -1466,6 +1587,9 @@ class DownloadService:
                 v.extract_current = current
                 v.extract_total = total
                 v.extract_message = message
+                if usage:
+                    v.disk_free = int(usage["free_bytes"])
+                    v.disk_total = int(usage["total_bytes"])
                 payload = asdict(v)
             self.emit("task_update", payload)
 
@@ -1536,6 +1660,12 @@ class DownloadService:
                 v.phase = "done"
                 v.extract_current = v.extract_total
                 v.extract_message = "Extraction complete"
+                try:
+                    usage = disk_usage_for_path(install_dir)
+                    v.disk_free = int(usage["free_bytes"])
+                    v.disk_total = int(usage["total_bytes"])
+                except OSError:
+                    pass
                 v.state = DownloadState.COMPLETED.value
                 self.emit("task_update", asdict(v))
 

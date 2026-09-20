@@ -5,6 +5,7 @@ from __future__ import annotations
 import http.client
 import json
 import os
+import shutil
 import threading
 import time
 from dataclasses import dataclass, field
@@ -17,6 +18,8 @@ import urllib3
 
 ProgressCallback = Callable[[int, int, float, str], None]
 StatusCallback = Callable[[str], None]
+# (allocated_bytes, total_bytes, disk_free_bytes, disk_total_bytes)
+PrepareCallback = Callable[[int, int, int, int], None]
 
 # Errors that indicate a dropped/interrupted connection where resuming is safe.
 TRANSIENT_ERRORS = (
@@ -82,9 +85,11 @@ class IDMDownloader:
         self,
         on_progress: ProgressCallback | None = None,
         on_status: StatusCallback | None = None,
+        on_prepare: PrepareCallback | None = None,
     ) -> None:
         self.on_progress = on_progress
         self.on_status = on_status
+        self.on_prepare = on_prepare
         self._progress_disk_lock = threading.Lock()
 
     def start(self, task: DownloadTask) -> None:
@@ -142,8 +147,15 @@ class IDMDownloader:
                 return
             time.sleep(0.1)
 
-    def _prepare_resume(self, part_path: str) -> int:
-        """Bytes already saved for a single-connection download (contiguous .part)."""
+    def _prepare_resume(self, part_path: str, connections: int = 1, total: int = 0) -> int:
+        """Bytes already saved (never treat a sparse multi-conn shell as fully downloaded)."""
+        if connections > 1:
+            existing = self._multi_bytes_done(part_path, connections)
+            if existing is not None:
+                return existing
+            if total > 0 and self._looks_uninitialized_part(part_path, total):
+                return 0
+            return 0
         if os.path.exists(part_path):
             return os.path.getsize(part_path)
         return 0
@@ -263,12 +275,56 @@ class IDMDownloader:
                 return False
         return True
 
+    @staticmethod
+    def _disk_usage_for(part_path: str) -> tuple[int, int]:
+        try:
+            usage = shutil.disk_usage(os.path.dirname(part_path) or ".")
+            return usage.free, usage.total
+        except OSError:
+            return 0, 0
+
+    def _notify_prepare(self, part_path: str, total: int) -> None:
+        if not self.on_prepare:
+            return
+        try:
+            allocated = os.path.getsize(part_path) if os.path.isfile(part_path) else 0
+        except OSError:
+            allocated = 0
+        free_bytes, disk_total = self._disk_usage_for(part_path)
+        self.on_prepare(allocated, total, free_bytes, disk_total)
+
     def _ensure_multi_part_file(self, part_path: str, total: int) -> None:
         if os.path.isfile(part_path) and os.path.getsize(part_path) == total:
+            self._notify_prepare(part_path, total)
             return
-        with open(part_path, "wb") as handle:
-            if total > 0:
-                handle.truncate(total)
+        if total <= 0:
+            with open(part_path, "ab"):
+                pass
+            return
+
+        # `truncate()` zero-fills on Windows: a 60+ GB pre-allocation writes every
+        # byte and blocks for minutes. Setting the final size with a single write
+        # at the last offset leaves the zero-filling to NTFS.
+        errors: list[Exception] = []
+
+        def allocate() -> None:
+            try:
+                mode = "r+b" if os.path.isfile(part_path) else "wb"
+                with open(part_path, mode) as handle:
+                    handle.seek(total - 1)
+                    handle.write(b"\0")
+                    handle.flush()
+            except Exception as exc:  # surfaced on the calling thread
+                errors.append(exc)
+
+        worker = threading.Thread(target=allocate, name="part-allocate", daemon=True)
+        worker.start()
+        while worker.is_alive():
+            self._notify_prepare(part_path, total)
+            worker.join(0.4)
+        if errors:
+            raise errors[0]
+        self._notify_prepare(part_path, total)
 
     @staticmethod
     def _looks_uninitialized_part(part_path: str, total: int) -> bool:
@@ -394,7 +450,11 @@ class IDMDownloader:
                 if total > 0 and task.connections > 1
                 else None
             )
-            resume_offset = self._prepare_resume(part_path)
+            resume_offset = self._prepare_resume(
+                part_path,
+                task.connections,
+                total,
+            )
 
             if multi_done is not None:
                 with task._lock:
@@ -405,6 +465,8 @@ class IDMDownloader:
                 with task._lock:
                     task.downloaded = resume_offset
                 self._notify_status(task, f"Resuming from {resume_offset:,} bytes...")
+
+            self._notify_progress(task)
 
             if total > 0 and self._multi_download_complete(part_path, total, task.connections):
                 os.replace(part_path, task.dest_path)
@@ -549,7 +611,7 @@ class IDMDownloader:
     ) -> None:
         task.state = DownloadState.ALLOCATING
         self._notify_status(task, "Preparing download file...")
-        self._notify_progress(task)
+        self._notify_prepare(part_path, total)
 
         ranges = self._byte_ranges(total, task.connections)
         done_list = self._migrate_legacy_chunks(part_path, total, task.connections)
@@ -568,8 +630,12 @@ class IDMDownloader:
             task.downloaded = sum(progress_map.values())
             task.total_size = total
 
+        self._notify_progress(task)
+        self._notify_prepare(part_path, total)
+
         task.state = DownloadState.DOWNLOADING
         self._notify_status(task, f"Downloading ({task.connections} connections)...")
+        self._notify_progress(task)
 
         errors: list[Exception] = []
 
@@ -694,3 +760,33 @@ class IDMDownloader:
         path = urlparse(url).path
         name = unquote(path.rsplit("/", 1)[-1]) if path else "download.bin"
         return name or "download.bin"
+
+
+def partial_bytes_for_dest(dest_path: str, connections: int = 8) -> tuple[int, int]:
+    """Return (bytes_downloaded, total_size_if_known) from progress metadata, not sparse .part size."""
+    part_path = dest_path + ".part"
+    conn = max(1, int(connections or 8))
+    probe = IDMDownloader()
+    multi = probe._multi_bytes_done(part_path, conn) if conn > 1 else None
+    if multi is not None:
+        progress = probe._load_progress(part_path)
+        total = int(progress.get("total") or 0) if progress else 0
+        return multi, total
+    if conn > 1:
+        return 0, 0
+    if os.path.isfile(part_path):
+        try:
+            return os.path.getsize(part_path), 0
+        except OSError:
+            return 0, 0
+    return 0, 0
+
+
+def part_disk_bytes(dest_path: str) -> int:
+    part_path = dest_path + ".part"
+    if not os.path.isfile(part_path):
+        return 0
+    try:
+        return os.path.getsize(part_path)
+    except OSError:
+        return 0

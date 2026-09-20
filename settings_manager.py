@@ -20,9 +20,9 @@ DEFAULT_CONNECTIONS = 8
 
 SUPPORTED_LANGUAGES = ("en", "zh", "es", "tl")
 DEFAULT_LANGUAGE = "en"
-APP_VERSION = "2.7.5"
+APP_VERSION = "2.7.8"
 APP_BRAND = "QuickPlay"
-APP_TITLE = "QuickPlay 2.7.5"
+APP_TITLE = "QuickPlay 2.7.8"
 
 STORE_SERVER1 = "server1"
 STORE_SERVER2 = "server2"

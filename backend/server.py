@@ -484,6 +484,31 @@ async def api_list_downloads():
     return {"tasks": get_service().list_tasks()}
 
 
+@app.get("/api/downloads/recovery")
+async def api_list_recovery_downloads():
+    return {"items": get_service().list_recovery_downloads()}
+
+
+class RecoveryActionBody(BaseModel):
+    dest_path: str = Field(..., min_length=1)
+    action: str = Field(..., min_length=1)
+
+
+@app.post("/api/downloads/recovery")
+async def api_recovery_download_action(payload: RecoveryActionBody):
+    service = get_service()
+    action = (payload.action or "").strip().lower()
+    if action == "resume":
+        result = service.resume_interrupted_download(payload.dest_path)
+    elif action == "discard":
+        result = service.discard_interrupted_download(payload.dest_path)
+    else:
+        raise HTTPException(400, "Invalid action")
+    if not result.get("ok"):
+        raise HTTPException(400, result.get("error", "Recovery action failed"))
+    return result
+
+
 @app.post("/api/downloads/{task_id}/pause")
 async def api_pause(task_id: str):
     ok = get_service().pause_task(task_id)

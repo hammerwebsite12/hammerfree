@@ -22,6 +22,7 @@ const state = {
   detailStorage: null,
   libraryHealNotified: false,
   redistRunning: false,
+  recoveryDownloads: [],
 };
 
 // ── API helpers ──
@@ -442,8 +443,93 @@ function formatBytes(n) {
   return i === 0 ? `${s} B` : `${s.toFixed(1)} ${u[i]}`;
 }
 
+/** Human size labels for download UI (e.g. 1 MB out of 52 GB). */
+function formatBytesHuman(n) {
+  if (!n || n <= 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let size = n;
+  let u = 0;
+  while (size >= 1024 && u < units.length - 1) {
+    size /= 1024;
+    u += 1;
+  }
+  if (u === 0) return `${size} B`;
+  let text;
+  if (size >= 100) text = String(Math.round(size));
+  else if (size >= 10) text = size.toFixed(1).replace(/\.0$/, "");
+  else text = size.toFixed(1).replace(/\.0$/, "");
+  return `${text} ${units[u]}`;
+}
+
+function formatDownloadSizeProgress(downloaded, total) {
+  const done = formatBytesHuman(downloaded);
+  const all = formatBytesHuman(total);
+  if (!total || total <= 0) return done;
+  const tpl = t("download.sizeOutOf");
+  return tpl.replace("{done}", done).replace("{total}", all);
+}
+
+function formatDiskUsage(task) {
+  if (!task.disk_total) return "";
+  return t("download.diskUsage", {
+    free: formatBytesHuman(task.disk_free || 0),
+    total: formatBytesHuman(task.disk_total || 0),
+  });
+}
+
+/** Percent of the pre-allocated `.part` file already reserved on disk. */
+function taskPreparePct(task) {
+  const total = task.prepare_total || task.total_size || 0;
+  if (total <= 0) return 0;
+  return Math.min(100, ((task.prepare_current || 0) / total) * 100);
+}
+
+function formatPreparingMeta(task) {
+  const total = task.prepare_total || task.total_size || 0;
+  const parts = [];
+  if (total > 0) {
+    parts.push(`${taskPreparePct(task).toFixed(1)}%`);
+    parts.push(t("download.reservedOutOf", {
+      done: formatBytesHuman(task.prepare_current || 0),
+      total: formatBytesHuman(total),
+    }));
+  }
+  const disk = formatDiskUsage(task);
+  if (disk) parts.push(disk);
+  parts.push(taskStatusLine(task));
+  return parts.join(" | ");
+}
+
+function formatExtractMeta(task) {
+  const pct = task.extract_total > 0
+    ? Math.min(100, (task.extract_current / task.extract_total) * 100)
+    : 0;
+  const parts = [`${pct.toFixed(1)}%`];
+  const msg = displayText(task.extract_message || "");
+  if (msg) parts.push(msg);
+  const disk = formatDiskUsage(task);
+  if (disk) parts.push(disk);
+  return parts.join(" | ");
+}
+
+function formatDownloadTaskMeta(task, { includeStatus = true } = {}) {
+  if (taskIsPreparingDownload(task)) return formatPreparingMeta(task);
+  // During extraction the download is finished: keep this line as the byte
+  // summary instead of mixing in the extract percentage.
+  const pct = task.total_size > 0
+    ? Math.min(100, (task.downloaded / task.total_size) * 100)
+    : 0;
+  const sizePart = formatDownloadSizeProgress(task.downloaded, task.total_size);
+  let line = `${pct.toFixed(1)}% | ${sizePart} | ${formatSpeed(task.speed)} | ETA ${formatEta(task.downloaded, task.total_size, task.speed)}`;
+  if (includeStatus) {
+    const status = taskStatusLine(task);
+    if (status) line += ` | ${status}`;
+  }
+  return line;
+}
+
 function formatSpeed(s) {
-  return `${formatBytes(s)}/s`;
+  return `${formatBytesHuman(s)}/s`;
 }
 
 function showLicenseModal(registrationCode, message, deviceFingerprint, isAbnormalHwid, autoCopy = false) {
@@ -584,7 +670,7 @@ function switchTab(name) {
   $$(".tab").forEach((t) => t.classList.toggle("active", t.dataset.tab === name));
   $$(".panel").forEach((p) => p.classList.toggle("active", p.id === `panel-${name}`));
   if (name === "library") { loadLibrary(); loadPendingExe(); }
-  if (name === "downloads") { loadTasks(); loadPendingExe(); loadLogs(); }
+  if (name === "downloads") { loadTasks(); loadRecoveryDownloads(); loadPendingExe(); loadLogs(); }
   if (name === "settings") loadSettingsForm();
   if (name === "browse") {
     refreshRedistStatus().then(syncRedistStatusBar);
@@ -1400,6 +1486,54 @@ function taskProgressPct(t) {
   return t.total_size > 0 ? Math.min(100, (t.downloaded / t.total_size) * 100) : 0;
 }
 
+/** Connecting / pre-allocating .part — bytes often stay at 0%; show an active bar. */
+function taskIsPreparingDownload(t) {
+  if (t.phase !== "download") return false;
+  if (t.state === "Connecting" || t.state === "Allocating") return true;
+  const msg = (t.status_message || "").toLowerCase();
+  return msg.includes("preparing download file") || msg.includes("kumokonekta");
+}
+
+/** Allocation progress is known, so the "preparing" bar can fill instead of sliding. */
+function taskPrepareIsMeasured(task) {
+  return taskIsPreparingDownload(task) && (task.prepare_total || task.total_size || 0) > 0;
+}
+
+function taskDownloadProgressBarClass(task) {
+  if (taskIsPreparingDownload(task)) {
+    return taskPrepareIsMeasured(task) ? "progress-bar preparing measured" : "progress-bar preparing";
+  }
+  if (task.phase === "download") return "progress-bar active";
+  return "progress-bar";
+}
+
+function taskDownloadProgressFillClass(task) {
+  let cls = "progress-fill";
+  if (task.phase === "download" && !taskIsPreparingDownload(task)) cls += " active-download";
+  return cls;
+}
+
+function taskDownloadProgressFillStyle(task, pct) {
+  if (taskPrepareIsMeasured(task)) return `style="width:${taskPreparePct(task)}%"`;
+  return taskIsPreparingDownload(task) ? "" : `style="width:${pct}%"`;
+}
+
+function syncDownloadProgressBar(bar, fill, task, pct) {
+  const preparing = taskIsPreparingDownload(task);
+  const measured = taskPrepareIsMeasured(task);
+  const active = task.phase === "download" && !preparing;
+  if (bar) {
+    bar.classList.toggle("preparing", preparing);
+    bar.classList.toggle("measured", measured);
+    bar.classList.toggle("active", active);
+  }
+  if (!fill || fill.classList.contains("extract")) return;
+  fill.classList.toggle("active-download", active);
+  if (measured) fill.style.width = `${taskPreparePct(task)}%`;
+  else if (preparing) fill.style.width = "";
+  else fill.style.width = `${pct}%`;
+}
+
 function taskStatusLine(t) {
   if (t.phase === "license_required") {
     return t.status_message || t("license.title");
@@ -1702,9 +1836,16 @@ function renderDownloadDock(force = false) {
   } else if (isWait) {
     progressBlock = `<div class="dock-meta resolving">${escapeHtml(taskStatusLine(task))}</div>`;
   } else {
+    const preparing = taskIsPreparingDownload(task);
+    const fillStyle = taskPrepareIsMeasured(task)
+      ? ` style="width:${taskPreparePct(task)}%"`
+      : (preparing ? "" : ` style="width:${showPct}%"`);
+    const barClass = taskDownloadProgressBarClass(task);
+    const fillClass = task.phase === "extract" ? "progress-fill extract" : taskDownloadProgressFillClass(task);
+    const meta = task.phase === "extract" ? formatExtractMeta(task) : formatDownloadTaskMeta(task);
     progressBlock = `
-      <div class="progress-bar"><div class="progress-fill ${task.phase === "extract" ? "extract" : ""}" style="width:${showPct}%"></div></div>
-      <div class="dock-meta">${showPct.toFixed(1)}% | ${formatBytes(task.downloaded)} / ${formatBytes(task.total_size)} | ${formatSpeed(task.speed)} | ETA ${formatEta(task.downloaded, task.total_size, task.speed)}</div>
+      <div class="${barClass}"><div class="${fillClass}"${fillStyle}></div></div>
+      <div class="dock-meta">${escapeHtml(meta)}</div>
     `;
   }
 
@@ -1733,16 +1874,17 @@ function patchDockProgress(inner, task) {
   const extPct = task.extract_total > 0 ? Math.min(100, (task.extract_current / task.extract_total) * 100) : 0;
   const showPct = task.phase === "extract" ? extPct : pct;
 
+  const bar = wrap.querySelector(".progress-bar");
   const fill = wrap.querySelector(".progress-fill");
   const meta = wrap.querySelector(".dock-meta:not(.resolving)") || wrap.querySelector(".dock-meta");
   const countdown = wrap.querySelector(".dock-countdown");
+  syncDownloadProgressBar(bar, fill, task, showPct);
+  if (fill) fill.classList.toggle("extract", task.phase === "extract");
 
-  if (fill) {
-    fill.style.width = `${showPct}%`;
-    fill.classList.toggle("extract", task.phase === "extract");
-  }
   if (meta && !isQueued && !isWait) {
-    meta.textContent = `${showPct.toFixed(1)}% | ${formatBytes(task.downloaded)} / ${formatBytes(task.total_size)} | ${formatSpeed(task.speed)} | ETA ${formatEta(task.downloaded, task.total_size, task.speed)}`;
+    meta.textContent = task.phase === "extract"
+      ? formatExtractMeta(task)
+      : formatDownloadTaskMeta(task);
   }
   if (meta && meta.classList.contains("resolving")) {
     meta.textContent = taskStatusLine(task);
@@ -1820,12 +1962,13 @@ function patchTaskCardEl(card, task) {
   const extPct = task.extract_total > 0 ? Math.min(100, (task.extract_current / task.extract_total) * 100) : 0;
   const statusLine = taskStatusLine(task);
 
+  const mainBar = card.querySelector(".progress-bar");
   const mainFill = card.querySelector(".progress-bar .progress-fill:not(.extract)");
-  if (mainFill) mainFill.style.width = `${pct}%`;
+  syncDownloadProgressBar(mainBar, mainFill, task, pct);
 
   const info = card.querySelector(".task-info:not(.resolving)");
   if (info) {
-    info.textContent = `${pct.toFixed(1)}% | ${formatBytes(task.downloaded)} / ${formatBytes(task.total_size)} | ${formatSpeed(task.speed)} | ETA ${formatEta(task.downloaded, task.total_size, task.speed)} | ${statusLine}`;
+    info.textContent = formatDownloadTaskMeta(task);
   }
 
   const resolving = card.querySelector(".task-info.resolving");
@@ -1838,6 +1981,9 @@ function patchTaskCardEl(card, task) {
 
   const extFill = card.querySelector(".progress-fill.extract");
   if (extFill) extFill.style.width = `${extPct}%`;
+
+  const extInfo = card.querySelector(".task-info-extract");
+  if (extInfo) extInfo.textContent = formatExtractMeta(task);
 
   const pauseBtn = card.querySelector(".pause-btn");
   if (pauseBtn) {
@@ -1894,18 +2040,85 @@ function renderTaskCard(task) {
       <div class="task-info resolving">${escapeHtml(statusLine)}</div>
       ${waitLine}
     ` : `
-    <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
-    <div class="task-info">${pct.toFixed(1)}% | ${formatBytes(task.downloaded)} / ${formatBytes(task.total_size)} | ${formatSpeed(task.speed)} | ETA ${formatEta(task.downloaded, task.total_size, task.speed)} | ${escapeHtml(statusLine)}</div>
+    <div class="${taskDownloadProgressBarClass(task)}"><div class="${taskDownloadProgressFillClass(task)}" ${taskDownloadProgressFillStyle(task, pct)}></div></div>
+    <div class="task-info">${escapeHtml(formatDownloadTaskMeta(task))}</div>
     `}
     ${task.phase === "extract" || task.phase === "done" ? `
       <div class="task-phase">Extract: ${task.phase === "done" ? "complete" : "in progress..."}</div>
       <div class="progress-bar"><div class="progress-fill extract" style="width:${extPct}%"></div></div>
-      <div class="task-info">${escapeHtml(task.extract_message || "")}</div>
+      <div class="task-info task-info-extract">${escapeHtml(formatExtractMeta(task))}</div>
     ` : ""}
     ${task.error && !showRetry ? `<div class="task-error">${escapeHtml(task.error)}</div>` : ""}
     ${task.error && showRetry ? `<div class="task-info resolving">${escapeHtml(task.error)}</div>` : ""}
   `;
   return card;
+}
+
+async function loadRecoveryDownloads() {
+  try {
+    const data = await api("/api/downloads/recovery");
+    state.recoveryDownloads = data.items || [];
+    renderRecoveryDownloads();
+  } catch (_) {}
+}
+
+function recoverySizeLine(item) {
+  const saved = formatBytesHuman(item.downloaded || 0);
+  const disk = formatBytesHuman(item.disk_bytes || 0);
+  const progress = item.total_size > 0
+    ? formatDownloadSizeProgress(item.downloaded || 0, item.total_size)
+    : `${saved} downloaded`;
+  const diskHint = (item.disk_bytes || 0) > (item.downloaded || 0) + (1024 * 1024)
+    ? ` · ${t("download.recoveryDiskHint", { saved, disk })}`
+    : "";
+  return `${progress}${diskHint}`;
+}
+
+function renderRecoveryDownloads() {
+  const host = $("#downloadRecoveryList");
+  if (!host) return;
+  const items = state.recoveryDownloads || [];
+  host.classList.toggle("hidden", !items.length);
+  if (!items.length) {
+    host.innerHTML = "";
+    return;
+  }
+  const cards = items.map((item) => {
+    const dest = escapeAttr(item.dest_path || "");
+    const title = escapeHtml(displayText(item.title || "Download"));
+    const meta = escapeHtml(recoverySizeLine(item));
+    return `<div class="download-recovery-card" data-dest-path="${dest}">
+      <div>
+        <div class="download-recovery-name">${title}</div>
+        <div class="download-recovery-meta">${meta}</div>
+      </div>
+      <div class="download-recovery-actions">
+        <button type="button" class="btn small accent recovery-resume-btn">${escapeHtml(t("download.recoveryResume") || "Resume")}</button>
+        <button type="button" class="btn small danger recovery-discard-btn">${escapeHtml(t("download.recoveryDiscard") || "Delete partial files")}</button>
+      </div>
+    </div>`;
+  }).join("");
+  host.innerHTML = `<h3 class="download-recovery-title">${escapeHtml(t("download.recoveryHeading") || "Interrupted downloads")}</h3>${cards}`;
+}
+
+async function onRecoveryAction(destPath, action) {
+  if (!destPath) return;
+  if (action === "discard") {
+    const item = (state.recoveryDownloads || []).find((e) => e.dest_path === destPath);
+    const ok = await showConfirm({
+      title: t("download.recoveryDiscardTitle") || "Delete partial files?",
+      message: t("download.recoveryDiscardMsg", { title: displayText(item?.title || "this game") }),
+      confirmText: t("download.recoveryDiscardConfirm") || "Delete files",
+      danger: true,
+    });
+    if (!ok) return;
+  }
+  await api("/api/downloads/recovery", {
+    method: "POST",
+    body: JSON.stringify({ dest_path: destPath, action }),
+  });
+  await loadRecoveryDownloads();
+  await loadTasks();
 }
 
 function renderTasks() {
@@ -2307,6 +2520,7 @@ function connectSSE() {
   es.onopen = () => {
     // Resync the authoritative task list on (re)connect so nothing lingers.
     loadTasks();
+    loadRecoveryDownloads();
     if (state.tab === "browse") {
       void refreshStoreSessionsIfIdle().then(() => loadBrowse());
     }
@@ -2327,6 +2541,10 @@ function connectSSE() {
             && payload.phase !== "resolving" && payload.phase !== "rate_limit") {
           setStatus(`${payload.title}: ${payload.state}`);
         }
+      }
+      if (type === "download_recovery") {
+        state.recoveryDownloads = payload.items || [];
+        renderRecoveryDownloads();
       }
       if (type === "gate_progress") {
         applyGateProgress(payload);
@@ -2549,6 +2767,14 @@ document.addEventListener("visibilitychange", () => {
   const idleMs = Date.now() - lastBrowseActivity;
   if (idleMs < 3 * 60 * 1000) return;
   void refreshStoreSessionsIfIdle().then(() => loadBrowse());
+});
+
+document.addEventListener("click", (ev) => {
+  const card = ev.target.closest?.(".download-recovery-card");
+  if (!card) return;
+  const dest = card.dataset.destPath;
+  if (ev.target.closest?.(".recovery-resume-btn")) void onRecoveryAction(dest, "resume");
+  if (ev.target.closest?.(".recovery-discard-btn")) void onRecoveryAction(dest, "discard");
 });
 
 document.addEventListener("DOMContentLoaded", init);

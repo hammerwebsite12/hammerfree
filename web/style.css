@@ -677,11 +677,75 @@ body.controller-mode .help-contact-card.gp-focused {
   height: 100%;
   background: var(--accent);
   border-radius: 3px;
-  transition: width 0.2s;
+  transition: width 0.45s ease-out;
+}
+
+.progress-bar.active {
+  background: #252018;
+}
+
+.progress-bar.active .progress-fill.active-download {
+  background: linear-gradient(
+    90deg,
+    #b8731a 0%,
+    #ffb347 35%,
+    #ffe8b8 50%,
+    #ffb347 65%,
+    #b8731a 100%
+  );
+  background-size: 220% 100%;
+  animation: qp-download-shimmer 2s ease-in-out infinite;
+  box-shadow: 0 0 12px rgba(255, 179, 71, 0.4);
+}
+
+@keyframes qp-download-shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: -100% 50%;
+  }
 }
 
 .progress-fill.extract {
   background: #7aa2d6;
+}
+
+/* Active indicator while connecting / pre-allocating large .part files (0% bytes). */
+.progress-bar.preparing {
+  background: #1a2e1a;
+}
+
+/* Allocation size is known: fill to the reserved percentage instead of sliding. */
+.progress-bar.preparing.measured .progress-fill {
+  min-width: 0;
+  background: linear-gradient(90deg, #3d9a4a, #6ecf7a);
+  animation: none;
+  transform: none;
+  transition: width 0.4s ease-out;
+}
+
+.progress-bar.preparing:not(.measured) .progress-fill {
+  width: 38%;
+  min-width: 48px;
+  background: linear-gradient(90deg, #3d9a4a, #6ecf7a, #3d9a4a);
+  background-size: 200% 100%;
+  animation: qp-preparing-bar 1.35s ease-in-out infinite;
+  transition: none;
+}
+
+@keyframes qp-preparing-bar {
+  0% {
+    transform: translateX(-120%);
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    transform: translateX(320%);
+    background-position: 0% 50%;
+  }
 }
 
 .task-info {
@@ -1403,6 +1467,47 @@ body.controller-mode .help-contact-card.gp-focused {
   font-weight: 700;
   color: var(--accent);
   padding: 4px 0 8px;
+}
+
+.download-recovery-list {
+  margin-bottom: 16px;
+  padding: 14px;
+  border: 1px solid #3d9a4a;
+  border-radius: 10px;
+  background: rgba(61, 154, 74, 0.1);
+}
+
+.download-recovery-title {
+  margin: 0 0 10px;
+  font-size: 0.95rem;
+  color: #8fd99a;
+  font-weight: 600;
+}
+
+.download-recovery-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.download-recovery-card:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.download-recovery-meta {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.download-recovery-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .pending-exe-list {

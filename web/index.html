@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>QuickPlay 2.7.5</title>
+  <title>QuickPlay 2.7.8</title>
   <link rel="icon" href="/favicon.ico" type="image/x-icon" />
   <link rel="stylesheet" href="/static/style.css" />
   <link rel="stylesheet" href="/static/bigpicture.css" />
@@ -73,6 +73,7 @@
       <button id="clearLogs" class="btn small" data-i18n="downloads.clearLogs">Clear Logs</button>
     </div>
     <div id="pendingExeList" class="pending-exe-list hidden"></div>
+    <div id="downloadRecoveryList" class="download-recovery-list hidden" aria-live="polite"></div>
     <div id="taskList" class="task-list"></div>
     <div id="taskEmpty" class="empty" data-i18n="downloads.empty">No active downloads.</div>
     <div class="log-panel" id="logPanel">
@@ -85,7 +86,7 @@
   <section id="panel-settings" class="panel">
     <div class="settings-wrap">
       <h2 data-i18n="settings.heading">Settings</h2>
-      <p class="setting-hint settings-version" id="appVersionLabel">Version 2.7.5</p>
+      <p class="setting-hint settings-version" id="appVersionLabel">Version 2.7.8</p>
       <p class="setting-hint" id="libraryPathHint"></p>
 
       <div class="setting-group">
