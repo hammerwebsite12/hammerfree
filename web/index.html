@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>QuickPlay 2.7.8</title>
+  <title>QuickPlay 2.7.9</title>
   <link rel="icon" href="/favicon.ico" type="image/x-icon" />
   <link rel="stylesheet" href="/static/style.css" />
   <link rel="stylesheet" href="/static/bigpicture.css" />
@@ -86,7 +86,7 @@
   <section id="panel-settings" class="panel">
     <div class="settings-wrap">
       <h2 data-i18n="settings.heading">Settings</h2>
-      <p class="setting-hint settings-version" id="appVersionLabel">Version 2.7.8</p>
+      <p class="setting-hint settings-version" id="appVersionLabel">Version 2.7.9</p>
       <p class="setting-hint" id="libraryPathHint"></p>
 
       <div class="setting-group">
@@ -139,9 +139,17 @@
       <div class="setting-group setting-check">
         <label>
           <input type="checkbox" id="verificationWindowFullCheck" />
-          <span data-i18n="settings.verificationWindowFull">Show verification page</span>
+          <span data-i18n="settings.verificationWindowFull">Show Server 2 verification page</span>
         </label>
         <p class="setting-hint" data-i18n="settings.verificationWindowFullHint">Shows Server 2 download and verification activity. If auto-fetch cannot finish, click Verify when prompted. Turn on when Server 2 downloads keep failing.</p>
+      </div>
+
+      <div class="setting-group setting-check hidden" id="server3VerificationGroup">
+        <label>
+          <input type="checkbox" id="server3VerificationWindowFullCheck" />
+          <span data-i18n="settings.server3VerificationWindowFull">Show Server 3 verification page</span>
+        </label>
+        <p class="setting-hint" data-i18n="settings.server3VerificationWindowFullHint">Shows Server 3 download and verification activity. Verification runs hidden by default. Turn on when you need to see the page or Server 3 downloads keep failing.</p>
       </div>
 
       <div class="setting-group setting-check">

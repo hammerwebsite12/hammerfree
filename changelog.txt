@@ -1,6 +1,13 @@
 QuickPlay Changelog
 ===================
 
+v2.7.9 — 2026-09-29
+--------------------
+- Server 2 interim host ankergames.to (ankergames.net fallback when DNS returns)
+- Download resolver client_resolve + on-PC gate when Worker CSRF fails
+- Settings: Server 1 / Server 2 only (Server 3 hidden while in development)
+- See RELEASE_NOTES.md and progressreport929.txt
+
 v2.6.7 — 2026-08-12
 --------------------
 - Server 2 catalog choice is saved and kept after restart (no longer forced back to Server 1)

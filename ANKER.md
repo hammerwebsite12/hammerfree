@@ -1,11 +1,11 @@
-# Anker / Server 2 — QuickPlay 2.7.5 beta
+# Anker / Server 2 — QuickPlay 2.7.9
 
 Unified QuickPlay supports two catalogs via **Settings → Game Store Server**:
 
 | Setting label | Internal id | Upstream | Workers |
 |---------------|-------------|----------|---------|
 | **Server 1** | `server1` | playzip.com mirrors | `worker/` → `dl-resolver` |
-| **Server 2** | `server2` | ankergames.net | `worker-anker/` → `anker-resolver` + `anker-dlresolver` |
+| **Server 2** | `server2` | ankergames.to (fallback ankergames.net) | `worker-anker/` → `anker-resolver` + `anker-dlresolver` |
 
 User-facing UI shows **Server 1 / Server 2** only — no PlayZip or Anker branding.
 
@@ -51,9 +51,21 @@ SIGNING_SECRET = "..."  # same on all Workers
    - If Worker returns an Anker gate URL (`ankergames.net/download/...`), client resolves one more hop locally (`anker_api._resolve_gate_to_cdn`)
    - **dlproxy** URLs (`*.dlproxy.uk/download/...`) are the final file — HEAD may return 403; downloader probes size with `GET Range: bytes=0-0`
 
-Browse/search/game details always hit ankergames.net from the client (no Worker).
+Browse/search/game details always hit the Anker base URL from the client (no Worker). Configure in `anker/config.py`; reachability probe in `anker/base_urls.py`.
 
-## Upstream incidents (ankergames.net)
+## Upstream incidents
+
+### 2026-09-29 — Registrar suspension + interim domain **ankergames.to**
+
+**Symptom:** `ankergames.net` DNS/registrar outage; browse and download fail for all users.
+
+**Official interim host:** `https://ankergames.to/` (Anker Discord). QuickPlay 2.7.9 sets this as primary; Workers use `ANKER_BASE_URL=https://ankergames.to` in `wrangler.anker-dlresolver.jsonc`.
+
+**Client:** `pick_reachable_base_url()` tries `BASE_URL` then `FALLBACK_BASE_URLS`. Gate detection accepts both `.to` and `.net` hosts.
+
+When the old domain is restored, add it to `FALLBACK_BASE_URLS` or swap `BASE_URL` — keep client and Worker in sync.
+
+## Upstream incidents (ankergames.net — historical)
 
 ### 2026-08-10 — CSRF session strictness (Server 2 downloads broken)
 

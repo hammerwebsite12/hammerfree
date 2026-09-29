@@ -911,6 +911,12 @@ function loadSettingsForm() {
   $("#connectionsRange").value = s.connections || 8;
   $("#connectionsValue").textContent = s.connections || 8;
   $("#verificationWindowFullCheck").checked = s.verification_window_full === true;
+  const s3Group = $("#server3VerificationGroup");
+  if (s3Group) {
+    s3Group.classList.toggle("hidden", s.server3_ui_enabled !== true);
+  }
+  $("#server3VerificationWindowFullCheck").checked =
+    s.server3_verification_window_full === true;
   $("#controllerEnabledCheck").checked = s.controller_enabled === true;
   $("#allowBigPictureCheck").checked = s.allow_big_picture === true;
   $("#disableAnnouncementCheck").checked = s.disable_announcement_on_startup === true;
@@ -1100,6 +1106,7 @@ $("#saveSettingsBtn").addEventListener("click", async () => {
       download_dir: $("#downloadDir").value.trim(),
       connections: parseInt($("#connectionsRange").value, 10),
       verification_window_full: $("#verificationWindowFullCheck").checked,
+      server3_verification_window_full: $("#server3VerificationWindowFullCheck").checked,
       controller_enabled: $("#controllerEnabledCheck").checked,
       allow_big_picture: $("#allowBigPictureCheck").checked,
       disable_announcement_on_startup: $("#disableAnnouncementCheck").checked,

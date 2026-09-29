@@ -86,9 +86,14 @@ PlayZip workers unchanged (`dl-resolver`, `playzip-resolver`).
 
 Client template: [../client_secrets.example.py](../client_secrets.example.py).
 
+### 2026-09-29 catalog host
+
+Set `ANKER_BASE_URL` in `wrangler.anker-dlresolver.jsonc` (currently `https://ankergames.to`).
+Must match `anker/config.py` `BASE_URL` on the Windows client. On CSRF/gate failure from Worker egress, dlresolver returns `{ client_resolve: true }` for the PC to finish the gate.
+
 ### 2026-08-10 upstream note
 
-ankergames.net now mismatches HTML meta CSRF vs `GET /csrf-token` after game page load.
+Anker host now mismatches HTML meta CSRF vs `GET /csrf-token` after game page load.
 `anker_upstream.js` must use the JSON token only (see [../ANKER.md](../ANKER.md) incident log).
 Redeploy **anker-dlresolver** after any upstream formula change.
 

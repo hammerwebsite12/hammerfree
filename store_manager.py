@@ -1,4 +1,4 @@
-"""Dual-store manager — Server 1 and Server 2 catalogs."""
+"""Multi-store manager — Server 1, 2, and 3 catalogs."""
 
 from __future__ import annotations
 
@@ -15,13 +15,31 @@ if TYPE_CHECKING:
 
 STORE_SERVER1 = "server1"
 STORE_SERVER2 = "server2"
+STORE_SERVER3 = "server3"
 DEFAULT_STORE = STORE_SERVER1
-SUPPORTED_STORES = (STORE_SERVER1, STORE_SERVER2)
+SUPPORTED_STORES = (STORE_SERVER1, STORE_SERVER2, STORE_SERVER3)
+
+# Server 3 stays in code for testing; hidden from Settings until catalog is stable.
+SERVER3_UI_ENABLED = False
 
 STORE_OPTIONS: list[dict[str, str]] = [
     {"id": STORE_SERVER1, "label": "Server 1"},
     {"id": STORE_SERVER2, "label": "Server 2"},
+    {"id": STORE_SERVER3, "label": "Server 3"},
 ]
+
+
+def public_store_options() -> list[dict[str, str]]:
+    if SERVER3_UI_ENABLED:
+        return list(STORE_OPTIONS)
+    return [opt for opt in STORE_OPTIONS if opt["id"] != STORE_SERVER3]
+
+
+def normalize_store_for_settings(value: str | None) -> str:
+    store = normalize_store(value)
+    if store == STORE_SERVER3 and not SERVER3_UI_ENABLED:
+        return STORE_SERVER2
+    return store
 
 EventCallback = Callable[[str, dict[str, Any]], None]
 RateLimitCallback = Callable[[int, str], None]
@@ -62,6 +80,7 @@ class StoreManager:
         self._active = normalize_store(settings.store)
         self._cached_playzip: PlayZipClient | None = None
         self._cached_anker: Any | None = None
+        self._cached_astral: Any | None = None
         self._last_switch_reason = ""
         self._apply_license_urls()
         self._apply_log_sanitize_mode()
@@ -70,6 +89,7 @@ class StoreManager:
         self._on_rate_limit = callback
         self._cached_playzip = None
         self._cached_anker = None
+        self._cached_astral = None
 
     def set_resolve_status_callback(
         self,
@@ -78,6 +98,7 @@ class StoreManager:
         self._on_resolve_status = callback
         self._cached_playzip = None
         self._cached_anker = None
+        self._cached_astral = None
 
     @property
     def active_store(self) -> str:
@@ -88,6 +109,10 @@ class StoreManager:
         return self._active == STORE_SERVER2
 
     @property
+    def is_astral(self) -> bool:
+        return self._active == STORE_SERVER3
+
+    @property
     def last_switch_reason(self) -> str:
         return self._last_switch_reason
 
@@ -96,17 +121,26 @@ class StoreManager:
             from anker.anker_api import CATEGORIES
 
             return list(CATEGORIES)
+        if self.is_astral:
+            from astral.astral_api import CATEGORIES
+
+            return list(CATEGORIES)
         return list(PLAYZIP_CATEGORIES)
 
     def get_client(self) -> PlayZipClient:
         if self.is_anker:
             return self._get_anker_client()
+        if self.is_astral:
+            return self._get_astral_client()
         return self._get_playzip_client()
 
     def get_client_for(self, store_id: str) -> PlayZipClient:
-        """Return browse client for a specific store id (server1/server2)."""
-        if normalize_store(store_id) == STORE_SERVER2:
+        """Return browse client for a specific store id (server1/server2/server3)."""
+        store = normalize_store(store_id)
+        if store == STORE_SERVER2:
             return self._get_anker_client()
+        if store == STORE_SERVER3:
+            return self._get_astral_client()
         return self._get_playzip_client()
 
     def create_details_service(self, logger: DownloadLogger):
@@ -114,6 +148,10 @@ class StoreManager:
             from anker.anker_game_details import AnkerGameDetailsService
 
             return AnkerGameDetailsService(self.get_client(), logger)
+        if self.is_astral:
+            from astral.astral_game_details import AstralGameDetailsService
+
+            return AstralGameDetailsService(self.get_client(), logger)
         from game_details import GameDetailsService
 
         return GameDetailsService(self.get_client(), logger)
@@ -189,15 +227,16 @@ class StoreManager:
         return False
 
     def check_server2_reachable(self) -> bool:
-        try:
-            from anker.config import BASE_URL
-        except ImportError:
-            from anker.config.example import BASE_URL  # type: ignore[import-not-found]
+        from anker.base_urls import pick_reachable_base_url
 
-        base = str(BASE_URL).rstrip("/")
+        base = pick_reachable_base_url(timeout=float(_REACH_TIMEOUT))
         try:
-            resp = requests.get(base, timeout=_REACH_TIMEOUT)
-            return resp.status_code < 500
+            resp = requests.get(
+                f"{base}/games",
+                timeout=_REACH_TIMEOUT,
+                headers={"User-Agent": USER_AGENT},
+            )
+            return resp.status_code < 500 and "uiPostCard" in resp.text
         except requests.RequestException:
             return False
 
@@ -289,6 +328,12 @@ class StoreManager:
             except OSError:
                 pass
             self._cached_anker = None
+        if self._cached_astral is not None:
+            try:
+                self._cached_astral.session.close()
+            except OSError:
+                pass
+            self._cached_astral = None
 
     def _get_playzip_client(self) -> PlayZipClient:
         if self._cached_playzip is None:
@@ -315,6 +360,20 @@ class StoreManager:
             )
         return self._cached_anker
 
+    def _get_astral_client(self) -> Any:
+        if self._cached_astral is None:
+            from astral.astral_api import AstralGamesClient
+
+            self._cached_astral = AstralGamesClient(
+                logger=self.logger,
+                on_rate_limit=self._on_rate_limit,
+                on_resolve_status=self._on_resolve_status,
+                hardware_snapshot_submitted=self.settings.hardware_snapshot_submitted,
+                on_snapshot_recorded=self._on_snapshot_recorded,
+                on_event=self._on_event,
+            )
+        return self._cached_astral
+
     def _apply_license_urls(self) -> None:
         import license_manager
 
@@ -326,7 +385,7 @@ class StoreManager:
 
             token = (getattr(cs, "APP_TOKEN", None) or "").strip()
             secret = (getattr(cs, "SIGNING_SECRET", None) or "").strip()
-            if self.is_anker:
+            if self.is_anker or self.is_astral:
                 worker_url = (getattr(cs, "ANKER_LICENSE_WORKER_URL", None) or "").strip()
             else:
                 worker_url = (getattr(cs, "WORKER_URL", None) or "").strip()

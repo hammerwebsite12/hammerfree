@@ -10,12 +10,12 @@ touching download, resume, library, or build logic.
 
 ## What this app is
 
-A Windows desktop app (**QuickPlay 2.7.5 beta**) that browses two game catalogs
-(**Server 1** = playzip mirrors, **Server 2** = ankergames.net), downloads
+A Windows desktop app (**QuickPlay 2.7.9**) that browses game catalogs
+(**Server 1** = playzip mirrors, **Server 2** = ankergames.to with ankergames.net fallback), downloads
 games with an IDM-style multi-connection downloader, auto-extracts archives,
 and manages an installed-games library with a PLAY button.
 
-User-facing labels are **Server 1 / Server 2** only — hide PlayZip/Anker branding.
+User-facing labels are **Server 1 / Server 2** (Server 3 code exists but is hidden in Settings until stable) — hide PlayZip/Anker/Astral branding.
 
 - **Stack:** Python 3.14 + FastAPI (backend) + pywebview/WebView2 (shell) +
   vanilla HTML/CSS/JS (`web/`).
@@ -163,7 +163,7 @@ the distributed EXE, signing is delegated to a Cloudflare Worker.
 
 See **[ANKER.md](ANKER.md)**, **[anker/FORMULA.md](anker/FORMULA.md)**, **[worker-anker/README.md](worker-anker/README.md)**.
 
-- **Browse/search/details:** client → ankergames.net directly (no Worker).
+- **Browse/search/details:** client → Anker base URL directly (no Worker). Primary host: **ankergames.to** (`anker/config.py`, `anker/base_urls.py`); legacy **ankergames.net** when DNS returns.
 - **License check:** `anker-resolver` `POST /license/check` when Server 2 active
   (`ANKER_LICENSE_WORKER_URL` in `client_secrets.py`).
 - **Download resolve:** `anker-dlresolver` `POST /resolve` → CDN / dlproxy URL;

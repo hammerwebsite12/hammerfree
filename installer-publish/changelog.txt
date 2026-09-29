@@ -1,6 +1,13 @@
 QuickPlay Changelog
 ===================
 
+v2.7.9 — 2026-09-29 (installer payload refresh)
+----------------------------------------------
+- Server 2: official interim catalog host ankergames.to (ankergames.net fallback when DNS returns)
+- Download resolver: PC gate fallback when Worker cannot reach Anker CSRF from datacenter IP
+- Settings store dropdown: Server 1 / Server 2 only (Server 3 hidden while in development)
+- PyArmor-protected build (latest dist/QuickPlay.exe)
+
 v2.7.8 — 2026-09-20 (installer payload refresh)
 ----------------------------------------------
 - Instant multi-connection .part pre-allocation (no multi-minute zero-fill wait on Windows)

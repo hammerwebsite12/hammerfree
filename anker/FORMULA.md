@@ -23,7 +23,7 @@ Documents the HTTP flow used by `anker/anker_api.py` and mirrored in
 
 ```http
 GET /csrf-token HTTP/1.1
-Host: ankergames.net
+Host: ankergames.to   (legacy: ankergames.net — same API paths)
 Accept: application/json
 X-Requested-With: XMLHttpRequest
 ```
@@ -50,8 +50,8 @@ generateDownloadUrl\(\s*(\d+)\s*\)
 POST /generate-download-url/4766 HTTP/1.1
 Content-Type: application/json
 X-CSRF-TOKEN: <token from GET /csrf-token — do NOT substitute HTML meta token>
-Referer: https://ankergames.net/game/cuphead
-Origin: https://ankergames.net
+Referer: https://ankergames.to/game/cuphead
+Origin: https://ankergames.to
 
 {"g-recaptcha-response":"development-mode"}
 ```
@@ -62,7 +62,7 @@ on the HTML page is from a rotated session and returns **419** if sent here.
 ```json
 {
   "success": true,
-  "download_url": "https://ankergames.net/download/<payload>/<hmac>"
+  "download_url": "https://ankergames.to/download/<payload>/<hmac>"
 }
 ```
 

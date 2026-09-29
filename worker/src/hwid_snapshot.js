@@ -4,6 +4,7 @@
 
 import {
   isAbnormalHwidStem,
+  isManualApprovedContent,
   isManualApprovedForDevice,
   normalizeDeviceFp,
   normalizeHwidStem,
@@ -123,6 +124,7 @@ export async function fetchHwidUserFile(env, stem) {
 export function isLicensedUserFile(content, stem, deviceFp) {
   if (!content) return false;
   if (!isAbnormalHwidStem(stem)) return true;
+  if (!isManualApprovedContent(content)) return true;
   return isManualApprovedForDevice(content, deviceFp);
 }
 

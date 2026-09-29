@@ -1,6 +1,6 @@
 # AnkerGames module (Server 2)
 
-Python client for [ankergames.net](https://ankergames.net/) — used by **QuickPlay 2.7.5 beta**
+Python client for Anker catalog (**[ankergames.to](https://ankergames.to/)** interim host) — used by **QuickPlay 2.7.9**
 when Settings → **Server 2** is selected. Wired through `store_manager.py`; not
 a manual import swap anymore.
 

@@ -1041,7 +1041,12 @@ def _looks_like_cdn_url(url: str) -> bool:
     path = (parsed.path or "").lower()
     if any(marker in host for marker in _FINAL_HOST_MARKERS):
         return True
-    if host in ("ankergames.net", "www.ankergames.net"):
+    if host in (
+        "ankergames.net",
+        "www.ankergames.net",
+        "ankergames.to",
+        "www.ankergames.to",
+    ):
         return False
     if path.endswith(_ARCHIVE_SUFFIXES):
         return True

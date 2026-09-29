@@ -1,11 +1,25 @@
 # QuickPlay Progress Report
 
-**Date:** September 20, 2026  
-**Version:** **2.7.8** (`APP_VERSION = 2.7.8`, `APP_TITLE = QuickPlay 2.7.8`)  
-**Repo:** [dvahana2424-web/playzipdl](https://github.com/dvahana2424-web/playzipdl) (private)  
-**Branch:** `quickplay-2.7.8-beta`
+**Date:** September 29, 2026  
+**Version:** **2.7.9** (`APP_VERSION = 2.7.9`, `APP_TITLE = QuickPlay 2.7.9`)  
+**Repo:** [hammerwebsite12/hammerfree](https://github.com/hammerwebsite12/hammerfree) (source branches)  
+**Branch:** `quickplay-2.7.9-beta`
 
-## Summary
+## Summary (2.7.9)
+
+QuickPlay 2.7.9 restores **Server 2** after Anker’s registrar outage by switching the catalog to **ankergames.to**, syncing Workers (`ANKER_BASE_URL`), and adding PC **client_resolve** gate fallback when Cloudflare Workers cannot complete CSRF. **Server 3** (Astral) is implemented in-tree but **hidden** in Settings (`SERVER3_UI_ENABLED = False`). Public release: [quickplay-v2.7.9](https://github.com/hammerwebsite12/hammerfree/releases/tag/quickplay-v2.7.9). Handoff notes: `progressreport929.txt`.
+
+## 2.7.9 session (2026-09-29)
+
+| Area | Status | Notes |
+|------|--------|-------|
+| **Anker interim domain** | Done | `anker/base_urls.py`, `config.py` → `.to` + `.net` fallback |
+| **Worker resolve** | Done | `client_resolve` on CSRF/gate failures; `ANKER_BASE_URL` on dlresolver |
+| **Server 3** | WIP / hidden | `astral/` + `astral_upstream.js`; UI gated off for release |
+| **Protected EXE** | Done | `dist/QuickPlay.exe`, `installer-publish/QuickPlay.zip` |
+| **Docs** | Done | AGENTS.md, ANKER.md, RELEASE_NOTES.md, progressreport929.txt |
+
+## 2.7.8 session (2026-09-20)
 
 QuickPlay 2.7.8 is the Windows desktop build (Server 1 / Server 2 catalogs, Worker-backed downloads, protected EXE). This report covers the **September 20, 2026** session: instant `.part` pre-allocation, preparing/download progress UX, disk usage during prepare and extract, interrupted-download recovery prompt, public installer **2.7.8**, and `PORT_AGENTIC_INSTRUCTION.md` for Android/SteamOS ports.
 

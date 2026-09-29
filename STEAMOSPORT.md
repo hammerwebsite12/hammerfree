@@ -150,7 +150,7 @@ Recommended for Deck:
 ### 5.1 Problem
 
 My Library showed **broken capsule images** when offline. The web UI loaded `image_url`
-directly from remote CDNs (`playzip.com`, `ankergames.net`, etc.) — no local fallback.
+directly from remote CDNs (`playzip.com`, `ankergames.to` / legacy `ankergames.net`, etc.) — no local fallback.
 
 ### 5.2 Solution (Windows 2.3)
 

@@ -13,5 +13,10 @@ WORKER_URL = "https://dl-resolver.hs2424.workers.dev"
 ANKER_LICENSE_WORKER_URL = "https://anker-resolver.hs2424.workers.dev"
 ANKER_DL_WORKER_URL = "https://anker-dlresolver.hs2424.workers.dev"
 
+# Server 3 — same download Worker as Server 2 (POST /resolve with store=server3). See ASTRAL.md.
+# Optional legacy standalone astral-dlresolver URL (not needed when anker-dlresolver is current):
+# ASTRAL_DL_WORKER_URL = "https://astral-dlresolver.hs2424.workers.dev"
+
+
 APP_TOKEN = "set-me-to-the-worker-APP_TOKEN"
 SIGNING_SECRET = "set-me-to-the-worker-SIGNING_SECRET"

@@ -1,8 +1,8 @@
-# QuickPlay 2.7.5 beta
+# QuickPlay 2.7.9
 
 Web-based desktop GUI to browse, download (IDM-style), auto-extract, and manage a games library with a PLAY button.
 
-**Branch:** `quickplay-2.7.5-beta` · **Version:** `2.7.5-beta` (window title: QuickPlay 2.7.5 beta)
+**Branch:** `quickplay-2.7.9-beta` · **Version:** `2.7.9` (window title: QuickPlay 2.7.9)
 
 **Stack:** Python (FastAPI) + HTML/CSS/JS + pywebview (WebView2 on Windows)
 
@@ -10,7 +10,7 @@ Web-based desktop GUI to browse, download (IDM-style), auto-extract, and manage 
 
 ## Features
 
-- **Dual store** — Settings → **Server 1** / **Server 2** (PlayZip + Anker catalogs in one app)
+- **Dual store (public)** — Settings → **Server 1** / **Server 2** (PlayZip + Anker on **ankergames.to**)
 - **Browse Games** — CSS grid with lazy loading, skeleton, gradient overlay
 - **Category filters** — Shooter, R18+, Racing, Action, RPG, etc. + Latest/Views sort
 - **Search** — find games by title

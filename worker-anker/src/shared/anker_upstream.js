@@ -58,7 +58,7 @@ function ankergamesHost(base) {
   try {
     return new URL(base).host.toLowerCase();
   } catch {
-    return "ankergames.net";
+    return "ankergames.to";
   }
 }
 
@@ -158,8 +158,20 @@ async function followGateChain(downloadUrl, base, jar, baseHost, maxHops = 4) {
  * @param {string} slug
  * @returns {Promise<{ download_url: string, gate_url?: string }>}
  */
+function shouldPreferClientResolve(err) {
+  const code = err?.code || "";
+  return (
+    code === "csrf_failed" ||
+    code === "csrf_empty" ||
+    code === "csrf_bad_json" ||
+    code === "csrf_expired" ||
+    code === "gate_turnstile_required" ||
+    code === "game_page_failed"
+  );
+}
+
 export async function resolveAnkerDownloadUrl(env, slug) {
-  const base = (env.ANKER_BASE_URL || "https://ankergames.net").replace(/\/$/, "");
+  const base = (env.ANKER_BASE_URL || "https://ankergames.to").replace(/\/$/, "");
   const recaptcha = env.ANKER_RECAPTCHA_BYPASS || "development-mode";
   const jar = new CookieJar();
 
@@ -226,6 +238,17 @@ export async function resolveAnkerDownloadUrl(env, slug) {
   }
 
   return { download_url: normalizeDownloadUrl(downloadUrl), gate_url: gateUrl };
+}
+
+export async function resolveAnkerDownloadUrlSafe(env, slug) {
+  try {
+    return await resolveAnkerDownloadUrl(env, slug);
+  } catch (err) {
+    if (shouldPreferClientResolve(err)) {
+      return { client_resolve: true };
+    }
+    throw err;
+  }
 }
 
 async function fetchCsrfToken(base, jar) {

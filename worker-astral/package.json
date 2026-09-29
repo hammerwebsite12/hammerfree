@@ -1,0 +1,13 @@
+{
+  "name": "quickplay-astral-workers",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AstralGames (Server 3) licensed download resolver.",
+  "scripts": {
+    "deploy": "wrangler deploy -c wrangler.astral-dlresolver.jsonc",
+    "dev": "wrangler dev -c wrangler.astral-dlresolver.jsonc"
+  },
+  "devDependencies": {
+    "wrangler": "^4.118.0"
+  }
+}

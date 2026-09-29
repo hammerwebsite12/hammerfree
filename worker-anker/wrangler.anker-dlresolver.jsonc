@@ -17,7 +17,8 @@
     "RATE_LIMIT_PER_MINUTE": "20",
     "QUICKPLAY_HWID_OWNER": "hammerwebsite12",
     "QUICKPLAY_HWID_REPO": "quickplayusr",
-    "ANKER_BASE_URL": "https://ankergames.net"
+    "ANKER_BASE_URL": "https://ankergames.to",
+    "ASTRAL_BASE_URL": "https://astralgames.net"
   },
 
   "kv_namespaces": [

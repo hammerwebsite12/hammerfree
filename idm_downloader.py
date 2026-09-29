@@ -420,6 +420,9 @@ class IDMDownloader:
             self._notify_status(task, "Kumokonekta...")
 
             headers = {"User-Agent": self.USER_AGENT}
+            if "mocha.my" in (task.url or ""):
+                headers["Referer"] = "https://mocha.my/"
+                headers["Accept"] = "*/*"
             probe = None
             for attempt in range(MAX_RETRIES + 1):
                 try:

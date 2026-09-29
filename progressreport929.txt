@@ -1,0 +1,235 @@
+================================================================================
+QuickPlay — Server 2 (Anker) handoff — 2026-09-29 (updated)
+progressreport929.txt — read before resuming fixes when Anker is back online
+================================================================================
+
+ROOT CAUSE (2026-09-29 — Anker official Discord)
+------------------------------------------------
+Anker staff stated their **domain has been taken down** by the **domain registrar**
+(suspending many domains/accounts; reason unknown to them). They are working on a fix.
+
+Implications for QuickPlay:
+  - This is **NOT** a QuickPlay bug, Worker misconfig, or intentional block of our
+    anker-dlresolver IP.
+  - **Server 2 is globally broken** while the domain is suspended: browse, search,
+    download, gate, CSRF — anything hitting ankergames.net (or successor URL).
+  - Symptoms we saw align: "Download server temporarily disabled", Discord "all
+    users down", intermittent reachability before full suspension.
+  - **Server 1 (PlayZip)** uses a different upstream — unaffected by Anker registrar.
+
+User messaging (seller): Server 2 offline due to Anker/domain issue; use Server 1 or
+wait for their announcement. Reinstall / license retry does not fix Server 2 now.
+
+================================================================================
+BRANCH / REPO STATE (end of 2026-09-29 session)
+================================================================================
+- Git branch: quickplay-2.7.8-beta (matches origin/quickplay-2.7.8-beta)
+- Worker source: REVERTED to last GitHub commit (no session Worker patches on disk)
+- Windows client: REVERTED to last GitHub commit (no 2.7.9 / gate retry on disk)
+- Cloudflare Workers:
+    anker-dlresolver + anker-resolver — LICENSE PARITY FIX deployed 2026-09-29
+      (grandfather legacy .user without Manual-Approved; matches Server 1 behavior).
+      CSRF client_resolve NOT redeployed yet — expect 502 csrf_failed on download
+      when Anker domain is back until fix A is applied.
+    dl-resolver (S1): license parity in repo (hwid_snapshot.js) — redeploy when convenient
+- dl-resolver (Server 1): NOT redeployed this session.
+- Public release quickplay-v2.7.9 may exist on hammerwebsite12/hammerfree from a
+  brief upload; local installer was restored to 2.7.8. Clean up release if needed.
+
+Android QuickPlay: C:\Users\user\Desktop\gamehub
+  - Module: quickplay/ (also app/ copy of store clients — keep in sync)
+  - Default store: SERVER1 in SettingsStore — user must pick Server 2 to test Anker
+  - Browse: direct ankergames.net via OkHttp + desktop Chrome UA (same as Windows)
+  - NOT affected by Worker csrf_failed for **catalog** (Worker is download-only)
+
+================================================================================
+WHEN TO START FIXES — PHASE 0 (mandatory)
+================================================================================
+Do **nothing** until Anker announces a **working official base URL**.
+
+STEP 0 — Confirm upstream
+  [ ] Read Anker Discord for official domain (restored ankergames.net OR new host).
+  [ ] Browser (PC + phone): https://<official-host>/games loads real catalog.
+  [ ] One browser download test completes (no registrar parking page, no "disabled").
+
+STEP 0b — If domain CHANGED (not just restored)
+  Update hardcoded base URL everywhere before any Worker/client logic fixes:
+    playzipanker repo:
+      anker/config.py          → BASE_URL
+      worker-anker wrangler    → ANKER_BASE_URL var (anker-dlresolver.jsonc)
+    gamehub repo:
+      quickplay/.../Constants.kt → ANKER_BASE
+      (grep ankergames.net in both repos)
+  Then rebuild Windows EXE + Android APK and redeploy Workers.
+
+STEP 1 — If same domain restored, run verification checklist (bottom of this file).
+
+STEP 2 — Apply planned fix package A → B → C only if checklist shows technical
+  gaps (csrf_failed, license parity, gate expired). If 2.7.8 works end-to-end,
+  ship doc-only or skip build.
+
+================================================================================
+ISSUE TIMELINE (technical — still valid after domain returns)
+================================================================================
+
+1) BROWSE OK, DOWNLOAD FAIL (when domain was still up)
+   - Catalog: direct GET ankergames.net from client (no Worker).
+   - Download: anker-dlresolver POST /resolve.
+
+2) 502 csrf_failed (Windows 2.7.8)
+   - PC GET /csrf-token → 200; Worker fetch → csrf_failed → 502 to app.
+   - Collateral CF/WAF on datacenter/Worker egress — not necessarily anti-QuickPlay.
+   - Separate from registrar outage but will **return after domain is back** unless
+     Worker uses client_resolve hybrid (planned fix A).
+
+3) license_required / false Custom OS (session Worker deploy)
+   - New anker-dlresolver license stricter than legacy dl-resolver.
+   - Fix: grandfather .user without Manual-Approved (planned fix A).
+
+4) expired download link (client_resolve + hidden gate)
+   - Fix: 4 gate retries + visible verification on later attempts (planned fix B).
+
+5) Pre-suspension upstream flake
+   - "Download server temporarily disabled" — Anker CDN/backend circuit breaker.
+
+6) Session end: git restore + Worker redeploy to 2.7.8-beta code.
+
+================================================================================
+ANDROID vs PC — BROWSE (not the same as 502 csrf_failed)
+================================================================================
+| Topic | Windows QuickPlay | Android (gamehub/quickplay) |
+|-------|-------------------|---------------------------|
+| S2 browse path | AnkerGamesClient → ankergames.net | AnkerClient → same host |
+| Uses anker-dlresolver? | No (browse) | No (browse) |
+| User-Agent | Desktop Chrome | Desktop Chrome via HttpClients interceptor |
+| Parser | uiPostCard + fallbacks | Same regexes in AnkerClient.kt |
+
+UA test from PC network (2026-09-29): PC Chrome & Android Chrome UA → 56 cards;
+plain okhttp UA → 403 CF, 0 cards. App must keep Chrome UA interceptor.
+
+If PC browse works but Android does not (after domain is back):
+  - Phone on mobile data vs WiFi / DNS / ISP block
+  - App still on Server 1 in settings
+  - Old APK without uiPostCard parser
+  - Logs: "HTTP 403" vs "No games found." (network vs parse)
+
+Registrar outage: Android and PC fail equally — not an Android-only code defect.
+
+================================================================================
+ARCHITECTURE REMINDERS (read AGENTS.md + ANKER.md)
+================================================================================
+
+Server 2 browse/search: client → Anker base URL directly (no Worker).
+Server 2 download: client → anker-dlresolver POST /resolve
+  → download_url OR client_resolve: true
+  → client gate (Turnstile) → CDN (dlproxy.uk etc.)
+  → never pass single-use download-file URL to idm_downloader.
+
+client_secrets.py (gitignored):
+  ANKER_DL_WORKER_URL, ANKER_LICENSE_WORKER_URL, WORKER_URL (S1),
+  APP_TOKEN, SIGNING_SECRET
+
+License: quickplayusr via QUICKPLAY_HWID_PAT on Workers.
+
+================================================================================
+FAILURE TAXONOMY (after domain is live)
+================================================================================
+
+| Log / UI                              | Likely cause              | Fix lane        |
+|---------------------------------------|---------------------------|-----------------|
+| DNS fail / parking page / no site     | Registrar / wrong URL     | PHASE 0 URL     |
+| Browse empty / HTTP errors            | CF, network, wrong host   | URL / network   |
+| 502 (csrf_failed) on resolver         | Worker IP vs /csrf-token  | Worker + client |
+| 403 license_required                  | HWID / parity             | Worker license  |
+| Custom OS false reactivation          | S2 stricter than S1       | Grandfather rule|
+| expired download link                 | Hidden gate / Turnstile   | Client gate UX  |
+| Download server temporarily disabled  | Anker backend             | Wait Anker      |
+
+================================================================================
+PLANNED FIX PACKAGE (re-apply — NOT on disk; implement when PHASE 0–1 pass)
+================================================================================
+
+A) WORKER — anker-dlresolver + anker-resolver (deploy together)
+   - worker-anker/src/shared/anker_upstream.js
+       preferClientResolve(); csrf_* / 403 → { client_resolve: true }
+       Keep /csrf-token JSON only (never HTML meta CSRF) — ANKER.md 2026-08-10
+   - worker-anker/src/anker-dlresolver/index.js
+       catch preferClientResolve → 200 { client_resolve: true }
+   - worker-anker/src/shared/hwid_snapshot.js + worker/src/hwid_snapshot.js
+       Grandfather: abnormal stem + .user without Manual-Approved → licensed
+   - worker-anker/src/shared/auth.js + worker/src/index.js
+       custom_os false for grandfathered licensed users
+   Deploy:
+     cd worker-anker
+     npx wrangler login   # hanahsong2424@gmail.com if needed
+     npx wrangler deploy -c wrangler.anker-dlresolver.jsonc
+     npx wrangler deploy -c wrangler.anker-resolver.jsonc
+   Account ID: 1f3d8591d5ce5b25bb355660031673b0
+
+B) WINDOWS CLIENT (recommended if gate/csrf issues remain)
+   - anker/anker_api.py: 502 csrf_* → _resolve_via_client_gate fallback
+   - gate_resolver_worker.py + gate_bridge.py: 4 attempts, QP_GATE_MODE_OVERRIDE
+   - Bump 2.7.9: settings_manager.py, web/index.html, installer-publish/*
+   - build-protected.ps1 → dist/QuickPlay.exe (close elevated QuickPlay first)
+
+C) ANDROID (gamehub) — if download/gate parity needed after Windows proven
+   - Mirror gate retry / client_resolve handling in DownloadCoordinator + AnkerClient
+   - Constants.ANKER_BASE if domain changed
+   - See PORT_AGENTIC_INSTRUCTION.md for module paths
+
+D) DOCS
+   - ANKER.md: registrar incident, csrf, license parity, new-domain checklist
+
+Suggested order: PHASE 0 → verify → A → test 2.7.8 → B if needed → C → D
+
+================================================================================
+VERIFICATION CHECKLIST (run after official URL is confirmed)
+================================================================================
+
+Replace BASE below with official Anker host from Discord.
+
+1) Residential probe (Python or curl, Chrome UA):
+   GET https://BASE/csrf-token → 200 + token
+   GET https://BASE/games → 200, HTML contains uiPostCard articles
+   POST generate-download-url (see anker/FORMULA.md) → 200 gate URL
+   GET gate page → no "temporarily disabled", no registrar parking
+
+2) Worker (licensed HWID test PC):
+   POST anker-dlresolver/resolve → 200 download_url OR client_resolve
+   NOT 502 csrf_failed for licensed user
+
+3) License parity:
+   POST dl-resolver/license/check AND anker-resolver/license/check
+   → same licensed + custom_os for same hwid/device_fp
+
+4) Windows QuickPlay 2.7.8 (then 2.7.9 if built): Server 2 full download + extract
+
+5) Android: Server 2 in settings, browse grid populated, one download test
+
+================================================================================
+WHAT NOT TO DO
+================================================================================
+
+- Do not deploy Worker/client fixes while domain is suspended or URL unknown.
+- Do not assume all 502s are registrar — retest csrf_failed after site is back.
+- Do not deploy stricter license without grandfather (false reactivation on S2).
+- Do not change ANKER_BASE_URL in Worker without matching client + Android.
+- PyInstaller: kill QuickPlay.exe manually if build PermissionError (often Admin).
+
+================================================================================
+UNTRACKED LOCAL FILES (ignore unless user asks)
+================================================================================
+
+agenticport.md, new.txt, todo.txt, _hf-publish-tmp/
+
+================================================================================
+CONTACT CONTEXT
+================================================================================
+
+User: QuickPlay seller/maintainer, Philippines (UTC+8).
+Repos: playzipanker (quickplay-2.7.8-beta), gamehub (Android).
+Status (2026-09-29 PM): Anker interim host https://ankergames.to/ live (ankergames.net DNS dead).
+  QuickPlay 2.7.9 built: client + anker-dlresolver use .to; .net fallback in anker/base_urls.py.
+  Server 3 hidden in Settings (SERVER3_UI_ENABLED=False). Release quickplay-v2.7.9 zip refreshed.
+
+End of progressreport929.txt

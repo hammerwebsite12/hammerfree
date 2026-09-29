@@ -187,6 +187,7 @@ class SettingsUpdate(BaseModel):
     connections: int | None = Field(default=None, ge=MIN_CONNECTIONS, le=MAX_CONNECTIONS)
     show_logs: bool | None = None
     verification_window_full: bool | None = None
+    server3_verification_window_full: bool | None = None
     defender_exclusion: bool | None = None
     disable_announcement_on_startup: bool | None = None
     language: str | None = None
@@ -324,6 +325,7 @@ async def api_update_settings(body: SettingsUpdate):
         f"Settings updated — folder={settings.download_dir}, "
         f"connections={settings.connections}, show_logs={settings.show_logs}, "
         f"verification_window_full={settings.verification_window_full}, "
+        f"server3_verification_window_full={settings.server3_verification_window_full}, "
         f"store={settings.store}"
     )
     return settings.to_dict()

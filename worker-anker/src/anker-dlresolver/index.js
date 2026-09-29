@@ -23,8 +23,12 @@ import {
 } from "../shared/auth.js";
 import {
   mapUpstreamError,
-  resolveAnkerDownloadUrl,
+  resolveAnkerDownloadUrlSafe as resolveAnkerDownloadUrl,
 } from "../shared/anker_upstream.js";
+import {
+  mapAstralUpstreamError,
+  resolveAstralDownloadUrl,
+} from "../shared/astral_upstream.js";
 import { auditRequest } from "../shared/audit_log.js";
 import {
   abuseReasonFromResponse,
@@ -143,7 +147,19 @@ export default {
       snapshotRecorded = await recordPromise;
     }
 
+    const store = String(body.store || "").trim().toLowerCase();
+    const useAstral = store === "server3" || store === "astral";
+
     try {
+      if (useAstral) {
+        const result = await resolveAstralDownloadUrl(env, slug);
+        const responseBody = { download_url: result.download_url };
+        if (snapshotRecorded) {
+          responseBody.snapshot_recorded = true;
+        }
+        return json(responseBody);
+      }
+
       const result = await resolveAnkerDownloadUrl(env, slug);
       if (result.client_resolve) {
         const responseBody = { client_resolve: true };
@@ -161,7 +177,9 @@ export default {
       }
       return json(responseBody);
     } catch (err) {
-      const mapped = mapUpstreamError(err);
+      const mapped = useAstral
+        ? mapAstralUpstreamError(err)
+        : mapUpstreamError(err);
       return json(mapped.body, mapped.status);
     }
   },

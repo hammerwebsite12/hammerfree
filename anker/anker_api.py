@@ -50,8 +50,10 @@ def _worker_settings() -> tuple[str, str, str]:
 try:
     from anker.config import BASE_URL, DOWNLOAD_COOLDOWN_SECONDS
 except ImportError:  # pragma: no cover - template fallback
-    BASE_URL = "https://ankergames.net"
+    BASE_URL = "https://ankergames.to"
     DOWNLOAD_COOLDOWN_SECONDS = 0
+
+from anker.base_urls import is_anker_store_host, pick_reachable_base_url
 
 from device_fingerprint import get_device_fingerprint
 from hardware_snapshot import get_hardware_snapshot_text
@@ -263,7 +265,12 @@ class AnkerGamesClient:
         self._on_rate_limit = on_rate_limit
         self._on_resolve_status = on_resolve_status
         self._on_event = on_event
-        self._base_url = BASE_URL.rstrip("/")
+        self._base_url = pick_reachable_base_url()
+        if self.logger and self._base_url != str(BASE_URL).rstrip("/"):
+            self._log(
+                f"Using Anker catalog host: {self._base_url}",
+                "INFO",
+            )
         self._last_download_at = 0.0
         self._hardware_snapshot_submitted = hardware_snapshot_submitted
         self._on_snapshot_recorded = on_snapshot_recorded
@@ -653,12 +660,25 @@ class AnkerGamesClient:
             )
         if resp.status_code != 200:
             err_detail = ""
+            err_code = ""
             try:
                 data = resp.json()
                 if data.get("error"):
-                    err_detail = f" ({data['error']})"
+                    err_code = str(data["error"])
+                    err_detail = f" ({err_code})"
             except json.JSONDecodeError:
-                pass
+                data = {}
+            if resp.status_code == 502 and err_code in (
+                "csrf_failed",
+                "csrf_expired",
+                "csrf_empty",
+                "gate_turnstile_required",
+            ):
+                self._log(
+                    f"[{label}] Resolver needs local gate ({err_code}) — retrying on PC",
+                    "WARN",
+                )
+                return self._resolve_via_client_gate(slug, label, None)
             self._log(f"[{label}] Resolver error {resp.status_code}{err_detail}", "ERROR")
             raise RuntimeError("Hindi makakuha ng download link. Subukan ulit.")
 
@@ -692,7 +712,7 @@ class AnkerGamesClient:
         except Exception:
             return False
         host = (parsed.hostname or "").lower()
-        if host not in ("ankergames.net", "www.ankergames.net"):
+        if not is_anker_store_host(host):
             return False
         path = parsed.path.lower()
         return path.startswith("/download/") or path.startswith("/download-file/")

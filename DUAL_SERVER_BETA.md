@@ -1,6 +1,8 @@
-# QuickPlay 2.7.5 beta — Dual Server Beta
+# QuickPlay — Dual Server (historical beta notes)
 
-**Branch:** `dual-server-beta`  
+**Current release:** 2.7.9 on branch `quickplay-2.7.9-beta` (Server 1 + Server 2 public; Server 3 in repo, UI hidden).
+
+**Original beta branch:** `dual-server-beta`  
 **Date:** August 3, 2026  
 **Workspace:** `plazipanker` (Windows unified build)
 

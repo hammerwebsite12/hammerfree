@@ -20,14 +20,15 @@ DEFAULT_CONNECTIONS = 8
 
 SUPPORTED_LANGUAGES = ("en", "zh", "es", "tl")
 DEFAULT_LANGUAGE = "en"
-APP_VERSION = "2.7.8"
+APP_VERSION = "2.7.9"
 APP_BRAND = "QuickPlay"
-APP_TITLE = "QuickPlay 2.7.8"
+APP_TITLE = "QuickPlay 2.7.9"
 
 STORE_SERVER1 = "server1"
 STORE_SERVER2 = "server2"
+STORE_SERVER3 = "server3"
 DEFAULT_STORE = STORE_SERVER1
-SUPPORTED_STORES = (STORE_SERVER1, STORE_SERVER2)
+SUPPORTED_STORES = (STORE_SERVER1, STORE_SERVER2, STORE_SERVER3)
 
 
 def _normalize_store(value: Any) -> str:
@@ -41,6 +42,7 @@ class AppSettings:
     connections: int = DEFAULT_CONNECTIONS
     show_logs: bool = True
     verification_window_full: bool = False
+    server3_verification_window_full: bool = False
     defender_exclusion: bool = True
     defender_status: str = ""
     disable_announcement_on_startup: bool = False
@@ -84,6 +86,9 @@ class SettingsManager:
             connections=connections,
             show_logs=bool(raw.get("show_logs", True)),
             verification_window_full=bool(raw.get("verification_window_full", False)),
+            server3_verification_window_full=bool(
+                raw.get("server3_verification_window_full", False)
+            ),
             defender_exclusion=bool(raw.get("defender_exclusion", True)),
             defender_status=str(raw.get("defender_status", "")),
             disable_announcement_on_startup=bool(
@@ -96,8 +101,16 @@ class SettingsManager:
             controller_enabled=bool(raw.get("controller_enabled", False)),
             allow_big_picture=bool(raw.get("allow_big_picture", False)),
         )
+        from store_manager import normalize_store_for_settings
 
-        needs_save = any(
+        remapped = normalize_store_for_settings(settings.store)
+        if remapped != settings.store:
+            settings.store = remapped
+            needs_remap = True
+        else:
+            needs_remap = False
+
+        needs_save = needs_remap or any(
             key not in raw
             for key in (
                 "first_license_check_done",
@@ -106,6 +119,7 @@ class SettingsManager:
                 "disable_announcement_on_startup",
                 "store",
                 "verification_window_full",
+                "server3_verification_window_full",
                 "controller_enabled",
                 "allow_big_picture",
             )
@@ -143,6 +157,16 @@ class SettingsManager:
     @property
     def verification_window_mode(self) -> str:
         if self._settings.verification_window_full:
+            return "full"
+        return "hidden"
+
+    @property
+    def server3_verification_window_full(self) -> bool:
+        return self._settings.server3_verification_window_full
+
+    @property
+    def server3_verification_window_mode(self) -> str:
+        if self._settings.server3_verification_window_full:
             return "full"
         return "hidden"
 
@@ -208,6 +232,10 @@ class SettingsManager:
             self._settings.show_logs = bool(kwargs["show_logs"])
         if "verification_window_full" in kwargs:
             self._settings.verification_window_full = bool(kwargs["verification_window_full"])
+        if "server3_verification_window_full" in kwargs:
+            self._settings.server3_verification_window_full = bool(
+                kwargs["server3_verification_window_full"]
+            )
         if "defender_exclusion" in kwargs:
             self._settings.defender_exclusion = bool(kwargs["defender_exclusion"])
         if "disable_announcement_on_startup" in kwargs:
@@ -217,7 +245,9 @@ class SettingsManager:
         if "language" in kwargs:
             self._settings.language = _normalize_language(kwargs["language"])
         if "store" in kwargs:
-            self._settings.store = _normalize_store(kwargs["store"])
+            from store_manager import normalize_store_for_settings
+
+            self._settings.store = normalize_store_for_settings(kwargs["store"])
         if "controller_enabled" in kwargs:
             self._settings.controller_enabled = bool(kwargs["controller_enabled"])
         if "allow_big_picture" in kwargs:
@@ -226,7 +256,7 @@ class SettingsManager:
         return self._settings
 
     def to_dict(self) -> dict[str, Any]:
-        from store_manager import STORE_OPTIONS
+        from store_manager import SERVER3_UI_ENABLED, public_store_options
 
         data = asdict(self._settings)
         data["library_path"] = self.library_path
@@ -234,7 +264,8 @@ class SettingsManager:
         data["max_connections"] = MAX_CONNECTIONS
         data["default_connections"] = DEFAULT_CONNECTIONS
         data["supported_languages"] = list(SUPPORTED_LANGUAGES)
-        data["store_options"] = list(STORE_OPTIONS)
+        data["store_options"] = public_store_options()
+        data["server3_ui_enabled"] = SERVER3_UI_ENABLED
         data["app_version"] = APP_VERSION
         data["app_brand"] = APP_BRAND
         data["app_title"] = APP_TITLE

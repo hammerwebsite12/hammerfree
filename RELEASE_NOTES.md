@@ -1,5 +1,28 @@
 # QuickPlay Release Notes
 
+## v2.7.9 — September 29, 2026
+
+### Server 2 (Anker)
+- **Interim catalog host** [ankergames.to](https://ankergames.to/) after registrar outage on ankergames.net
+- **`anker/base_urls.py`** — auto-pick reachable host; legacy `.net` fallback when DNS returns
+- **Download resolve** — Worker `client_resolve` when datacenter CSRF/gate fails; PC gate fallback on 502 `csrf_*`
+- **Workers** — `ANKER_BASE_URL=https://ankergames.to` on `anker-dlresolver`
+
+### Settings / UI
+- Public store dropdown: **Server 1** and **Server 2** only (`SERVER3_UI_ENABLED = False`)
+- Server 3 (Astral) code in repo for development; not exposed in Settings yet
+
+### Build & distribution
+- `APP_VERSION = 2.7.9`, protected build via `build-protected.ps1`
+- Branch: `quickplay-2.7.9-beta`
+- Public installer: [quickplay-v2.7.9](https://github.com/hammerwebsite12/hammerfree/releases/tag/quickplay-v2.7.9)
+
+```powershell
+irm https://raw.githubusercontent.com/hammerwebsite12/hammerfree/quickplay/install.ps1 | iex
+```
+
+---
+
 ## v2.7.8 — September 20, 2026
 
 ### Download UX

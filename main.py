@@ -40,6 +40,8 @@ from win_elevate import ensure_admin_or_exit
 from defender_utils import warn_defender_exclusion_on_startup
 from license_manager import perform_first_startup_license_check
 from anker.gate_resolver_worker import is_gate_worker_argv, run_gate_worker_cli
+from astral.fileq_verify import is_fileq_worker_argv, run_fileq_worker_cli
+from astral.mocha_verify import is_mocha_worker_argv, run_mocha_worker_cli
 
 
 def find_free_port() -> int:
@@ -163,4 +165,8 @@ if __name__ == "__main__":
     mp.freeze_support()
     if is_gate_worker_argv():
         raise SystemExit(run_gate_worker_cli(sys.argv[2]))
+    if is_mocha_worker_argv():
+        raise SystemExit(run_mocha_worker_cli(sys.argv[2]))
+    if is_fileq_worker_argv():
+        raise SystemExit(run_fileq_worker_cli(sys.argv[2]))
     main()

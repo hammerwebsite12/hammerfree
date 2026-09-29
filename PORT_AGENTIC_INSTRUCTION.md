@@ -1,6 +1,6 @@
-# PORT_AGENTIC_INSTRUCTION.md — QuickPlay 2.7.8 Download UX → Android & SteamOS
+# PORT_AGENTIC_INSTRUCTION.md — QuickPlay 2.7.9 Download UX → Android & SteamOS
 
-> **Audience:** an AI agent (or human) porting the **QuickPlay Windows 2.7.8** download/extract
+> **Audience:** an AI agent (or human) porting the **QuickPlay Windows 2.7.9** download/extract
 > UX changes into the **Android (GameHub)** and **SteamOS (QuickPlaySteamOS)** builds.
 >
 > **Read this whole file before editing.** Every section states the *intent* first, then the
@@ -10,7 +10,7 @@
 | Field | Value |
 |-------|-------|
 | Source branch | `quickplay-2.7.5-beta` @ `dvahana2424-web/playzipdl` |
-| Source version | **2.7.8** (`APP_VERSION` / `APP_TITLE` in `settings_manager.py`) |
+| Source version | **2.7.9** (`APP_VERSION` / `APP_TITLE` in `settings_manager.py`) |
 | Android target | `C:\Users\user\Desktop\gamehub` — module `quickplay`, appId `com.quickplay.android`, `versionName 1.0.7` |
 | SteamOS target | branch `DUALSERVER-STEAMOS-PORT`, folder `QuickPlaySteamOS/`, `APP_VERSION = "2.6.8"` |
 | Files changed on Windows | `idm_downloader.py`, `download_service.py`, `backend/server.py`, `settings_manager.py`, `web/{app.js,i18n.js,index.html,style.css}` |

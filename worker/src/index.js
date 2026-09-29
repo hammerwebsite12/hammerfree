@@ -38,6 +38,7 @@ import {
   kvRateLimitWritesEnabled,
   kvUsageStatsEnabled,
 } from "./kv_policy.js";
+import { isManualApprovedContent } from "./abnormal_hwids.js";
 import {
   fetchHwidUserFile,
   hasHardwareSnapshot,
@@ -168,7 +169,17 @@ async function resolveLicenseStatus(env, hwid, deviceFp) {
     ? isLicensedUserFile(userFile.content, stem, deviceFp)
     : false;
 
-  return { licensed, custom_os: abnormal, userFile, stem };
+  let custom_os = abnormal;
+  if (
+    licensed &&
+    userFile &&
+    abnormal &&
+    !isManualApprovedContent(userFile.content)
+  ) {
+    custom_os = false;
+  }
+
+  return { licensed, custom_os, userFile, stem };
 }
 
 /** Verify token + timestamp window + HMAC signature. Returns null if OK. */
