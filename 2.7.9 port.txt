@@ -1,0 +1,294 @@
+================================================================================
+QuickPlay 2.7.9 — Android + SteamOS/Bazzite port handoff
+2.7.9 port.txt — agent instructions (read before editing gamehub / playzipdl)
+================================================================================
+Authored: 2026-09-29 (UTC+8)
+Windows source of truth (SHIPPED): branch quickplay-2.7.9-beta @ hammerwebsite12/hammerfree
+  (same tree as local playzipanker workspace)
+
+================================================================================
+0. WHY THIS PORT EXISTS (REGISTRAR / DOMAIN)
+================================================================================
+
+Anker (Server 2) moved to interim host **https://ankergames.to/** (Discord announcement).
+Legacy **ankergames.net** DNS/registrar was down for many users in late Sep 2026.
+
+Windows 2.7.9 fixes:
+  - Catalog + CSRF + gate URLs use **ankergames.to** first
+  - **ankergames.net** kept as fallback when DNS returns
+  - Cloudflare Workers: ANKER_BASE_URL=https://ankergames.to (already deployed)
+  - client_resolve gate path when Worker cannot CSRF from datacenter IP
+
+Android (gamehub) and SteamOS (playzipdl) trees reviewed 2026-09-29 still hardcode
+**ankergames.net** → Server 2 browse/download/gate **broken** until ported.
+
+Server 3 (Astral): Windows code exists but UI hidden (SERVER3_UI_ENABLED=False).
+**Do not** add Server 3 to Android/SteamOS in this port unless product owner asks.
+
+================================================================================
+1. REPO MAP
+================================================================================
+
+| Platform   | Local path (maintainer)              | Remote / branch (expected)        |
+|------------|--------------------------------------|-----------------------------------|
+| Windows    | C:\Users\user\Desktop\playzipanker   | quickplay-2.7.9-beta              |
+| Android    | C:\Users\user\Desktop\gamehub        | (project branch — sync quickplay/) |
+| SteamOS    | playzipdl repo                       | **steamosport-2.7.8** (user ref)  |
+|            | App folder: SteamOS port/QuickPlaySteamOS/ | branch DUALSERVER-STEAMOS-PORT may also exist |
+
+SteamOS note: private repo dvahana2424-web/playzipdl was not cloneable from CI/agent
+environment during authoring. Agent MUST clone locally:
+
+  git clone <playzipdl-url>
+  git fetch origin steamosport-2.7.8
+  git switch steamosport-2.7.8
+
+Then grep QuickPlaySteamOS for ankergames before/after edits.
+
+================================================================================
+2. WINDOWS 2.7.9 — BEHAVIOUR TO MATCH (REFERENCE FILES)
+================================================================================
+
+Read these in playzipanker (quickplay-2.7.9-beta):
+
+  anker/base_urls.py          NEW — PRIMARY .to, LEGACY .net, pick_reachable_base_url()
+  anker/config.py             BASE_URL = https://ankergames.to
+                              FALLBACK_BASE_URLS = (https://ankergames.net,)
+  anker/anker_api.py          pick_reachable_base_url() on client init
+                              is_anker_store_host() for gate URLs (not .net-only)
+                              502 csrf_* → _resolve_via_client_gate()
+  anker/gate_resolver_worker.py  gate hops: .to and .net hosts
+  store_manager.py            check_server2_reachable() uses pick + uiPostCard probe
+  worker-anker/wrangler.anker-dlresolver.jsonc
+                              ANKER_BASE_URL = https://ankergames.to
+  worker-anker/src/shared/anker_upstream.js
+                              resolveAnkerDownloadUrlSafe → client_resolve on CSRF fail
+
+Workers: **no Android/SteamOS deploy** — clients only need correct catalog host + gate
+host lists. Worker URLs in secrets unchanged (anker-dlresolver / anker-resolver).
+
+Docs: ANKER.md (2026-09-29 incident), RELEASE_NOTES.md, progressreport929.txt
+
+Installer (Windows only): use refs/heads/quickplay raw URL (CDN cache); see installer-publish/install.ps1
+
+================================================================================
+3. ANDROID (gamehub) — CURRENT GAPS (grep ankergames 2026-09-29)
+================================================================================
+
+Primary module: quickplay/src/main/java/com/quickplay/android/
+Duplicate legacy copy under app/src/main/java/... — **keep in sync** or delete duplicate
+if app module is unused (verify gradle dependencies first).
+
+| File | Issue |
+|------|--------|
+| core/Constants.kt | ANKER_BASE = "https://ankergames.net" → **https://ankergames.to** |
+| store/GateUrls.kt | isGateUrl / isDownloadFileHop / isCdnUrl only .net hosts |
+| store/GateWebViewHelper.kt | first-party origins only ankergames.net |
+| store/GateAdBlock.kt | allowlist host "ankergames.net" only |
+| MainActivity.kt | HttpClients.syncCookiesToWebView("ankergames.net") |
+| store/GateScripts.kt | comment/docs reference .net only (cosmetic) |
+| extract/StoreJunkCleaner.kt | OK — substring "ankergames" still valid for repack names |
+
+AnkerClient.kt already:
+  - Uses Constants.ANKER_BASE for browse/search/csrf/generate-download-url
+  - Handles client_resolve from Worker (lines ~87–89)
+  - localGenerateGateUrl() — will work once ANKER_BASE is .to
+
+**No Worker URL change** if secrets.properties already points to anker-dlresolver.hs2424.workers.dev
+
+================================================================================
+4. ANDROID — RECOMMENDED IMPLEMENTATION (AGENTS)
+================================================================================
+
+### 4.1 Single source of Anker hosts (mirror Windows base_urls.py)
+
+Add: quickplay/.../core/AnkerHosts.kt (or store/AnkerHosts.kt)
+
+  - const val PRIMARY_BASE = "https://ankergames.to"
+  - const val LEGACY_BASE = "https://ankergames.net"
+  - val STORE_HOSTS = setOf("ankergames.to", "www.ankergames.to",
+                            "ankergames.net", "www.ankergames.net")
+  - fun isStoreHost(host: String): Boolean
+  - fun activeBaseUrl(): String  — optional: probe GET /games for "uiPostCard" like Windows
+    (use OkHttp + desktop UA; try PRIMARY then LEGACY; cache result in memory)
+
+Update Constants.kt:
+
+  const val ANKER_BASE = AnkerHosts.PRIMARY_BASE   // or activeBaseUrl() if probing
+
+### 4.2 GateUrls.kt
+
+Replace hardcoded host checks with AnkerHosts.isStoreHost(host) for gate/download-file
+hops. isCdnUrl: return false when isStoreHost(host) (same as Windows — store host is
+never final CDN).
+
+### 4.3 GateWebViewHelper.kt
+
+firstPartyOrigins = setOf(
+  "https://ankergames.to", "https://www.ankergames.to",
+  "https://ankergames.net", "https://www.ankergames.net",
+)
+
+### 4.4 GateAdBlock.kt
+
+Add "ankergames.to", "www.ankergames.to" to allowlist (keep .net for fallback).
+
+### 4.5 MainActivity.kt
+
+Sync cookies for both registrable domains (or parse host from Constants.ANKER_BASE):
+
+  HttpClients.syncCookiesToWebView("ankergames.to")
+  HttpClients.syncCookiesToWebView("ankergames.net")  // optional fallback
+
+### 4.6 Optional: 502 client_resolve parity
+
+Windows falls back to local gate on 502 csrf_failed from Worker. Android AnkerClient
+currently throws on non-200. Consider:
+
+  if (resp.code == 502 && data?.optString("error") in csrfErrors)
+      return resolveViaClientGate(slug, label)
+
+Match error set: csrf_failed, csrf_expired, csrf_empty, gate_turnstile_required
+
+### 4.7 Version bump
+
+Bump gamenative (or root) versionName / versionCode to **2.7.9** (or next Android ship).
+Update any in-app "QuickPlay x.y.z" string.
+
+### 4.8 Verification (Android)
+
+  [ ] Settings → Server 2 → Browse shows games (uiPostCard cards)
+  [ ] Search returns results
+  [ ] Licensed device: download starts (Worker resolve or client_resolve + gate)
+  [ ] Gate WebView loads ankergames.to/download/... (not rejected as non-gate)
+  [ ] CDN URL captured (dlproxy / datanodes / archive extension)
+  [ ] Phone on mobile data + WiFi
+
+### 4.9 Do NOT break
+
+  - Desktop Chrome User-Agent on catalog requests (403 if plain okhttp UA)
+  - Gate adblock must not break challenges.cloudflare.com
+  - StoreJunkCleaner: do not delete folders with real game content (Metaphor lesson)
+
+================================================================================
+5. STEAMOS / BAZZITE (playzipdl) — EXPECTED LAYOUT
+================================================================================
+
+Target directory: **SteamOS port/QuickPlaySteamOS/**
+
+Steamosport-2.7.8 branch should be ~Windows 2.7.8 parity. This port adds **2.7.9
+domain fix** on top (merge Windows anker changes; do not revert 2.7.8 download UX
+unless conflict).
+
+Likely files to update (grep ankergames.net in QuickPlaySteamOS):
+
+  anker/config.py              → copy from Windows 2.7.9
+  anker/config.example.py
+  anker/base_urls.py           → **ADD** (new file on Windows 2.7.9)
+  anker/anker_api.py           → merge gate host + pick_reachable_base_url + 502 fallback
+  anker/gate_resolver_worker.py → .to gate hosts
+  store_manager.py             → check_server2_reachable if present
+  release.spec / PyInstaller   → hiddenimport anker.base_urls if listed
+
+If SteamOS tree never received 2.7.8 download UX port, see PORT_AGENTIC_INSTRUCTION.md
+— but **domain fix is independent** and should ship first so Server 2 works.
+
+settings_manager.py: bump APP_VERSION / APP_TITLE to **2.7.9**
+web/index.html: version label 2.7.9
+
+Linux-specific: no change to ankergames host logic vs Windows; shutil/paths unchanged.
+
+================================================================================
+6. STEAMOS — AGENT WORKFLOW
+================================================================================
+
+STEP 1 — Clone and branch
+  git fetch origin steamosport-2.7.8
+  git switch -c feature/steamos-2.7.9-anker-domain steamosport-2.7.8
+
+STEP 2 — Windows reference worktree
+  git worktree add ../qp-win279 <url-to-quickplay-2.7.9-beta>
+
+STEP 3 — Three-way merge (anker only first)
+  diff -ru QuickPlaySteamOS/anker ../qp-win279/anker
+  Port at minimum: base_urls.py, config.example.py, config.py, anker_api.py hunks,
+  gate_resolver_worker.py host list
+
+STEP 4 — store_manager + web version strings
+
+STEP 5 — Test on Deck/Bazzite
+  cd "SteamOS port/QuickPlaySteamOS"
+  python3 main.py
+  Server 2 browse + one small download + extract
+
+STEP 6 — Build AppImage if project uses packaging/AppRun (follow SteamOS port/README.md)
+
+Commit message example:
+  fix(steamos): Server 2 ankergames.to catalog + gate hosts (2.7.9 parity)
+
+================================================================================
+7. STEAMOS VERIFICATION CHECKLIST
+================================================================================
+
+  [ ] GET https://ankergames.to/games returns uiPostCard HTML from Linux client
+  [ ] ankergames.net fails or works as fallback only (optional probe)
+  [ ] POST anker-dlresolver/resolve → 200 download_url OR client_resolve
+  [ ] Gate resolves to CDN; idm_downloader / download_service completes
+  [ ] Settings version 2.7.9
+  [ ] Server 1 still works (no regression)
+
+================================================================================
+8. WORKERS & SECRETS (ALL PLATFORMS)
+================================================================================
+
+Already deployed from Windows session (hanahsong2424 account):
+  anker-dlresolver — ANKER_BASE_URL=https://ankergames.to
+  client_resolve on CSRF/gate failures
+
+Clients must NOT embed PLAYZIP/Anker signing secrets. Only:
+  ANKER_DL_WORKER_URL, ANKER_LICENSE_WORKER_URL, APP_TOKEN, SIGNING_SECRET
+
+Rotate Worker + clients together if secrets change.
+
+================================================================================
+9. OUT OF SCOPE FOR THIS PORT (unless owner requests)
+================================================================================
+
+  - Server 3 / Astral (astral/, fileq_verify, mocha_verify)
+  - Windows installer CDN refs/heads documentation (Android/SteamOS N/A)
+  - Full 2.7.8→2.7.9 feature parity on SteamOS if steamosport-2.7.8 already has UX port
+  - gamehub app/ duplicate module cleanup (separate chore)
+
+================================================================================
+10. AGENT PROMPT (COPY-PASTE)
+================================================================================
+
+You are porting QuickPlay Windows 2.7.9 Server 2 domain fix to <Android|SteamOS>.
+
+READ FIRST in Windows repo (quickplay-2.7.9-beta):
+  2.7.9 port.txt, ANKER.md (2026-09-29), anker/base_urls.py, anker/anker_api.py
+
+GOAL: Replace ankergames.net-only assumptions with ankergames.to primary + .net fallback.
+Gate URL detection must accept BOTH .to and .net store hosts.
+
+Android: gamehub/quickplay module — Constants.kt, GateUrls.kt, GateWebViewHelper.kt,
+GateAdBlock.kt, MainActivity cookie sync. Mirror AnkerHosts helper. Bump version 2.7.9.
+
+SteamOS: playzipdl branch steamosport-2.7.8 → QuickPlaySteamOS/anker/* merge from Windows.
+Add anker/base_urls.py. Bump APP_VERSION 2.7.9.
+
+TEST: Server 2 browse + licensed download end-to-end. Do not break Server 1.
+
+Do not add Server 3. Do not commit secrets.properties / client_secrets.py.
+
+================================================================================
+11. RELATED DOCS (Windows repo)
+================================================================================
+
+  AGENTS.md              — download/resume rules, branding
+  ANKER.md               — Server 2 architecture + incidents
+  PORT_AGENTIC_INSTRUCTION.md — 2.7.8 download UX (SteamOS/Android longer port)
+  progressreport929.txt  — Anker outage timeline + Worker notes
+  gamenativeimporttoquickplay.md (gamehub) — gate merge notes (update .to allowlist)
+
+End of 2.7.9 port.txt

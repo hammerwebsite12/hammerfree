@@ -231,5 +231,6 @@ Repos: playzipanker (quickplay-2.7.8-beta), gamehub (Android).
 Status (2026-09-29 PM): Anker interim host https://ankergames.to/ live (ankergames.net DNS dead).
   QuickPlay 2.7.9 built: client + anker-dlresolver use .to; .net fallback in anker/base_urls.py.
   Server 3 hidden in Settings (SERVER3_UI_ENABLED=False). Release quickplay-v2.7.9 zip refreshed.
+  Licensing: removed dev PC HWID 742F08AA... from worker abnormal_hwids.js (false Custom OS on S2).
 
 End of progressreport929.txt
