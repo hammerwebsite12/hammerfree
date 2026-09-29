@@ -3,7 +3,7 @@
 Open **Windows PowerShell** (a UAC admin prompt will appear automatically) and paste:
 
 ```powershell
-irm https://raw.githubusercontent.com/hammerwebsite12/hammerfree/quickplay/install.ps1 | iex
+irm https://raw.githubusercontent.com/hammerwebsite12/hammerfree/refs/heads/quickplay/install.ps1 | iex
 ```
 
 ## What it does

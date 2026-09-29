@@ -1,7 +1,8 @@
 <#
     QuickPlay 2.7.9 - One-paste installer
     Usage (run in Windows PowerShell):
-        irm https://raw.githubusercontent.com/hammerwebsite12/hammerfree/quickplay/install.ps1 | iex
+        irm https://raw.githubusercontent.com/hammerwebsite12/hammerfree/refs/heads/quickplay/install.ps1 | iex
+    (Use refs/heads/quickplay — the shorter /quickplay/ path can lag on GitHub's CDN after updates.)
 #>
 
 $ErrorActionPreference = 'Stop'
@@ -12,7 +13,7 @@ $ProgressPreference     = 'Continue'
 $Branch       = 'quickplay'
 $Repo         = 'hammerwebsite12/hammerfree'
 $ReleaseTag   = 'quickplay-v2.7.9'
-$InstallUrl   = "https://raw.githubusercontent.com/$Repo/$Branch/install.ps1"
+$InstallUrl   = "https://raw.githubusercontent.com/$Repo/refs/heads/$Branch/install.ps1"
 $InstallDir  = 'C:\Program Files (x86)\QuickPlay'
 $AppName     = 'QuickPlay'
 $Version     = '2.7.9'
@@ -56,10 +57,10 @@ function Format-Span([double]$seconds) {
 }
 
 function Get-PartUrls([string]$name) {
-    # Branch is updated on every ship; release asset may lag behind.
+    # refs/heads/ avoids stale CDN on the legacy /$Branch/ raw path.
     @(
-        "https://raw.githubusercontent.com/$Repo/$Branch/$name",
-        "https://github.com/$Repo/raw/$Branch/$name",
+        "https://raw.githubusercontent.com/$Repo/refs/heads/$Branch/$name",
+        "https://github.com/$Repo/raw/refs/heads/$Branch/$name",
         "https://github.com/$Repo/releases/download/$ReleaseTag/$name"
     )
 }

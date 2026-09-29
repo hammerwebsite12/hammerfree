@@ -18,7 +18,7 @@
 - Public installer: [quickplay-v2.7.9](https://github.com/hammerwebsite12/hammerfree/releases/tag/quickplay-v2.7.9)
 
 ```powershell
-irm https://raw.githubusercontent.com/hammerwebsite12/hammerfree/quickplay/install.ps1 | iex
+irm https://raw.githubusercontent.com/hammerwebsite12/hammerfree/refs/heads/quickplay/install.ps1 | iex
 ```
 
 ---
@@ -46,7 +46,7 @@ irm https://raw.githubusercontent.com/hammerwebsite12/hammerfree/quickplay/insta
 - Public installer: [quickplay-v2.7.8](https://github.com/hammerwebsite12/hammerfree/releases/tag/quickplay-v2.7.8)
 
 ```powershell
-irm https://raw.githubusercontent.com/hammerwebsite12/hammerfree/quickplay/install.ps1 | iex
+irm https://raw.githubusercontent.com/hammerwebsite12/hammerfree/refs/heads/quickplay/install.ps1 | iex
 ```
 
 ---
@@ -73,7 +73,7 @@ irm https://raw.githubusercontent.com/hammerwebsite12/hammerfree/quickplay/insta
 - Public installer: `quickplay` on [hammerwebsite12/hammerfree](https://github.com/hammerwebsite12/hammerfree) — tag **quickplay-v2.7.5**
 
 ```powershell
-irm https://raw.githubusercontent.com/hammerwebsite12/hammerfree/quickplay/install.ps1 | iex
+irm https://raw.githubusercontent.com/hammerwebsite12/hammerfree/refs/heads/quickplay/install.ps1 | iex
 ```
 
 ---

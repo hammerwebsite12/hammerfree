@@ -64,4 +64,4 @@ Set-Location $repoRoot
 git worktree remove --force $worktree 2>$null
 
 Write-Host 'Done. Users can install with:' -ForegroundColor Green
-Write-Host '  irm https://raw.githubusercontent.com/hammerwebsite12/hammerfree/quickplay/install.ps1 | iex' -ForegroundColor Yellow
+Write-Host '  irm https://raw.githubusercontent.com/hammerwebsite12/hammerfree/refs/heads/quickplay/install.ps1 | iex' -ForegroundColor Yellow
