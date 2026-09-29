@@ -2,7 +2,7 @@
 
 Web-based desktop GUI to browse, download (IDM-style), auto-extract, and manage a games library with a PLAY button.
 
-**Branch:** `quickplay-2.7.9-beta` · **Version:** `2.7.9` (window title: QuickPlay 2.7.9)
+**Source (private):** [dvahana2424-web/playzipdl](https://github.com/dvahana2424-web/playzipdl) branch **`2.7.9-windows`** · **Version:** `2.7.9`
 
 **Stack:** Python (FastAPI) + HTML/CSS/JS + pywebview (WebView2 on Windows)
 

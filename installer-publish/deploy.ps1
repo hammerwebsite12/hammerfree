@@ -16,13 +16,13 @@ if (-not (Test-Path (Join-Path $PSScriptRoot 'QuickPlay.zip'))) {
     throw 'Missing installer-publish\QuickPlay.zip — run build-protected.ps1 and Compress-Archive dist\QuickPlay.exe first.'
 }
 
-Write-Host 'Fetching origin/quickplay...' -ForegroundColor Cyan
+Write-Host 'Fetching hammerfree-install/quickplay...' -ForegroundColor Cyan
 Set-Location $repoRoot
-git fetch origin quickplay
+git fetch hammerfree-install quickplay
 if (Test-Path $worktree) {
     git worktree remove --force $worktree 2>$null
 }
-git worktree add $worktree origin/quickplay
+git worktree add $worktree hammerfree-install/quickplay
 Set-Location $worktree
 git checkout quickplay 2>$null
 
@@ -35,7 +35,7 @@ if ($status) {
     git commit -m "Ship QuickPlay $ver installer (install.ps1 + QuickPlay.zip)."
     $token = gh auth token
     git remote set-url origin "https://x-access-token:${token}@github.com/hammerwebsite12/hammerfree.git"
-    git push origin quickplay
+    git push hammerfree-install quickplay
 } else {
     Write-Host 'No installer file changes to push on quickplay.' -ForegroundColor Yellow
 }

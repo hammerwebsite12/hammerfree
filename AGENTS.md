@@ -3,6 +3,11 @@
 Guide for AI agents debugging/maintaining this project. Read this first before
 touching download, resume, library, or build logic.
 
+> **Git:** Full source + `client_secrets.py` live on the **private** repo
+> `dvahana2424-web/playzipdl` (branch `2.7.9-windows`). Do **not** push source
+> branches to `hammerwebsite12/hammerfree` (public installer: `quickplay` branch +
+> `QuickPlay.zip` only via `installer-publish/deploy.ps1`).
+
 > **Branding:** The app is shipped as **QuickPlay** (window title, UI, and
 > `dist/QuickPlay.exe`). It is based on playzip.com but the playzip origin is
 > intentionally hidden from end users. Keep user-visible strings/filenames

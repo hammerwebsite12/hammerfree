@@ -23,7 +23,8 @@ wait for their announcement. Reinstall / license retry does not fix Server 2 now
 ================================================================================
 BRANCH / REPO STATE (end of 2026-09-29 session)
 ================================================================================
-- Git branch: quickplay-2.7.8-beta (matches origin/quickplay-2.7.8-beta)
+- Source repo (private): https://github.com/dvahana2424-web/playzipdl branch 2.7.9-windows
+  — do NOT push full source to hammerwebsite12/hammerfree (public installer repo only).
 - Worker source: REVERTED to last GitHub commit (no session Worker patches on disk)
 - Windows client: REVERTED to last GitHub commit (no 2.7.9 / gate retry on disk)
 - Cloudflare Workers:
