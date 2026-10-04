@@ -11,7 +11,13 @@ import uuid
 from dataclasses import asdict, dataclass, field
 from typing import Any, Callable
 
-from archive_utils import extract_archive, format_bytes
+from archive_utils import (
+    archive_is_broken,
+    archive_is_usable,
+    extract_archive,
+    format_bytes,
+    is_download_archive_path,
+)
 from download_logger import DownloadLogger
 from disk_space import disk_usage_for_path
 from storage_requirements import evaluate_disk_space, space_error_message
@@ -34,6 +40,7 @@ from license_manager import LicenseRequiredError, build_registration_code
 from playzip_api import GameResult
 from settings_manager import SettingsManager
 from store_manager import StoreManager
+from trainer_service import TrainerManager
 
 EventCallback = Callable[[str, dict[str, Any]], None]
 
@@ -144,6 +151,9 @@ class DownloadService:
         self._load_pending_exe_from_disk()
         self._warm_library_cover_cache()
         self._warm_library_banner_cache()
+        self.trainers = TrainerManager(logger=logger, on_event=self.emit)
+        self.trainers.start()
+        self._sync_trainers()
 
     @property
     def client(self):
@@ -417,9 +427,7 @@ class DownloadService:
         store = self._queue_store()
         pending = store.load()
         if not pending:
-            swept = self._sweep_orphaned_part_files()
-            if swept:
-                self.logger.info(f"Removed {swept} orphaned partial download file(s)")
+            self._sweep_download_folder_residue()
             self._advance_queue()
             return
 
@@ -438,8 +446,28 @@ class DownloadService:
             # completed file must never cancel a resume while partial chunks
             # are still present (os.replace overwrites it after the merge).
             if os.path.isfile(item.dest_path) and not has_partial:
-                self.logger.info(f"[{item.title}] Already downloaded — skipping")
                 store.remove(item.dest_path)
+                if archive_is_usable(item.dest_path):
+                    self.logger.info(
+                        f"[{item.title}] Complete archive on disk — continuing with extraction"
+                    )
+                    game = GameResult(
+                        game_id=item.game_id,
+                        title=item.title,
+                        image_url=item.image_url,
+                    )
+                    self._start_extraction_for_game(game, item.dest_path)
+                else:
+                    try:
+                        os.remove(item.dest_path)
+                        self.logger.info(
+                            f"[{item.title}] Removed incomplete download archive — will re-download"
+                        )
+                    except OSError as exc:
+                        self.logger.warn(
+                            f"[{item.title}] Could not remove bad archive: {exc}"
+                        )
+                    to_resume.append(item)
                 continue
 
             if has_partial:
@@ -458,9 +486,7 @@ class DownloadService:
             )
 
         if not to_resume and not recovery_items:
-            swept = self._sweep_orphaned_part_files()
-            if swept:
-                self.logger.info(f"Removed {swept} orphaned partial download file(s)")
+            self._sweep_download_folder_residue()
             self._advance_queue()
             return
 
@@ -484,9 +510,7 @@ class DownloadService:
 
         self._begin_resume_queued_item(first)
 
-        swept = self._sweep_orphaned_part_files()
-        if swept:
-            self.logger.info(f"Removed {swept} orphaned partial download file(s)")
+        self._sweep_download_folder_residue()
 
     def apply_settings(self) -> dict[str, Any]:
         """Reload paths after settings change."""
@@ -502,6 +526,7 @@ class DownloadService:
         self._load_pending_exe_from_disk()
         self.emit("library_updated", {})
         self.emit("settings_updated", self.settings.to_dict())
+        self._sync_trainers()
         return self.settings.to_dict()
 
     def emit(self, event_type: str, payload: dict[str, Any]) -> None:
@@ -1427,6 +1452,68 @@ class DownloadService:
                     protected.add(os.path.normpath(view.dest_path))
         return protected
 
+    def _sweep_download_folder_residue(self) -> None:
+        part_removed = self._sweep_orphaned_part_files()
+        archive_removed = self._sweep_abandoned_archives()
+        if part_removed:
+            self.logger.info(f"Removed {part_removed} orphaned partial download file(s)")
+        if archive_removed:
+            self.logger.info(f"Removed {archive_removed} failed download archive(s)")
+
+    def _sweep_abandoned_archives(self) -> int:
+        """Delete finished-looking archives that are corrupt or never completed."""
+        root = self.root_dir
+        if not root or not os.path.isdir(root):
+            return 0
+
+        protected = self._protected_download_dest_paths()
+        with self._lock:
+            for item in self._recovery_hold.values():
+                if item.dest_path:
+                    protected.add(os.path.normpath(item.dest_path))
+            for view in self._task_views.values():
+                if view.dest_path:
+                    protected.add(os.path.normpath(view.dest_path))
+
+        removed = 0
+        try:
+            entries = os.listdir(root)
+        except OSError:
+            return 0
+
+        for entry in entries:
+            if not entry or entry.startswith("."):
+                continue
+            full = os.path.join(root, entry)
+            if not os.path.isfile(full):
+                continue
+            if not is_download_archive_path(full):
+                continue
+
+            dest_path = os.path.normpath(full)
+            if dest_path in protected:
+                continue
+
+            part_path = dest_path + ".part"
+            progress_path = part_path + ".progress"
+            if os.path.isfile(part_path) or os.path.isfile(progress_path):
+                continue
+
+            if not archive_is_broken(dest_path):
+                continue
+
+            try:
+                os.remove(dest_path)
+                removed += 1
+                self.logger.info(
+                    f"Removed incomplete download: {os.path.basename(dest_path)}"
+                )
+            except OSError as exc:
+                self.logger.warn(
+                    f"Could not remove incomplete download {entry}: {exc}"
+                )
+        return removed
+
     def _sweep_orphaned_part_files(self) -> int:
         """Delete partial fragments left behind by cancelled or abandoned downloads."""
         root = self.root_dir
@@ -1551,19 +1638,47 @@ class DownloadService:
 
         self._queue_store().remove(task.dest_path)
         self._schedule_part_cleanup(task.dest_path)
+        self._start_extraction_for_game(game, task.dest_path, task_id=task_id)
 
-        archive_path = task.dest_path
+    def _start_extraction_for_game(
+        self,
+        game: GameResult,
+        archive_path: str,
+        *,
+        task_id: str | None = None,
+    ) -> None:
+        tid = (task_id or archive_path).strip()
+        if not tid or not archive_path:
+            return
+
         install_dir = os.path.join(
             self.root_dir,
             LibraryManager.safe_folder_name(game.title),
         )
-        view.phase = "extract"
-        view.install_dir = install_dir
-        view.extract_message = "Preparing extraction..."
         extract_usage = disk_usage_for_path(install_dir)
-        view.disk_free = int(extract_usage["free_bytes"])
-        view.disk_total = int(extract_usage["total_bytes"])
-        self.emit("task_update", asdict(view))
+        with self._lock:
+            view = self._task_views.get(tid)
+            if view is None:
+                view = TaskView(
+                    task_id=tid,
+                    title=game.title,
+                    game_id=game.game_id,
+                    image_url=game.image_url,
+                    state=DownloadState.DOWNLOADING.value,
+                    phase="extract",
+                    dest_path=archive_path,
+                    install_dir=install_dir,
+                )
+                self._task_views[tid] = view
+                self._task_meta[tid] = game
+            else:
+                view.phase = "extract"
+                view.install_dir = install_dir
+            view.extract_message = "Preparing extraction..."
+            view.disk_free = int(extract_usage["free_bytes"])
+            view.disk_total = int(extract_usage["total_bytes"])
+            payload = asdict(view)
+        self.emit("task_update", payload)
         self.logger.info(f"[{game.title}] Starting extraction → {install_dir}")
 
         # Extraction can eat tens of GB; refresh free space at most once a second
@@ -1581,7 +1696,7 @@ class DownloadService:
                 except OSError:
                     usage = None
             with self._lock:
-                v = self._task_views.get(task_id)
+                v = self._task_views.get(tid)
                 if not v:
                     return
                 v.extract_current = current
@@ -1619,7 +1734,7 @@ class DownloadService:
                 self._schedule_part_cleanup(archive_path)
                 exes = scan_executables(install_dir)
                 self.logger.info(f"[{game.title}] Found {len(exes)} EXE file(s)")
-                self._post_extract(task_id, game, install_dir, exes)
+                self._post_extract(tid, game, install_dir, exes)
             except Exception as exc:
                 if os.path.isfile(archive_path):
                     self.logger.warn(
@@ -1627,7 +1742,7 @@ class DownloadService:
                     )
                 self.logger.error(f"[{game.title}] Extract failed: {exc}")
                 with self._lock:
-                    v = self._task_views.get(task_id)
+                    v = self._task_views.get(tid)
                     if v:
                         v.phase = "error"
                         v.state = DownloadState.ERROR.value
@@ -1678,6 +1793,7 @@ class DownloadService:
             )
             self.library.add(entry)
             self._schedule_cover_cache(entry)
+            self._notify_trainer_entry(entry)
             self.emit("library_updated", {})
             self.logger.info(f"[{game.title}] Done — added to library")
             self._remove_task(task_id)
@@ -1693,6 +1809,7 @@ class DownloadService:
         )
         self.library.add(entry)
         self._schedule_cover_cache(entry)
+        self._notify_trainer_entry(entry)
         self.emit("library_updated", {})
         self.logger.info(
             f"[{game.title}] Added to library"
@@ -1754,6 +1871,7 @@ class DownloadService:
             )
             self.library.add(entry)
             self._schedule_cover_cache(entry)
+            self._notify_trainer_entry(entry)
 
         self.emit("library_updated", {})
         self._pending_exe_store().remove(task_id)
@@ -1789,6 +1907,18 @@ class DownloadService:
         data = asdict(entry)
         data["image_url"] = library_cover_url(entry.entry_id, entry.image_url)
         data["banner_url"] = library_banner_url(entry.entry_id)
+        trainers = getattr(self, "trainers", None)
+        if trainers:
+            data.update(trainers.status_for(entry))
+        else:
+            data.update(
+                {
+                    "trainer_available": False,
+                    "trainer_downloaded": False,
+                    "trainer_fetching": False,
+                    "trainer_name": "",
+                }
+            )
         return data
 
     def _schedule_cover_cache(self, entry: LibraryEntry) -> None:
@@ -1910,6 +2040,7 @@ class DownloadService:
                 entry.title,
                 entry.game_id,
                 self.logger,
+                install_dir=entry.install_dir,
             )
             if not match or not match.image_url:
                 continue
@@ -1921,8 +2052,9 @@ class DownloadService:
                 entry.game_id = match.game_id
             entry.image_url = match.image_url
             updated += 1
-            from cover_cache import cache_cover_for_entry
+            from cover_cache import cache_cover_for_entry, remove_cached_cover
 
+            remove_cached_cover(entry.entry_id)
             cache_cover_for_entry(entry.entry_id, entry.image_url, logger=self.logger)
         if updated:
             self.library.save()
@@ -1941,6 +2073,7 @@ class DownloadService:
             cand.title,
             cand.game_id,
             self.logger,
+            install_dir=cand.install_dir,
         )
         if not match:
             return cand.title, cand.game_id, ""
@@ -1983,6 +2116,7 @@ class DownloadService:
             )
             self.library.add(entry)
             self._schedule_cover_cache(entry)
+            self._notify_trainer_entry(entry)
             imported.append(entry.title)
             self.logger.info(f"Imported to library: {entry.title}")
 
@@ -2061,6 +2195,7 @@ class DownloadService:
             )
             self.library.add(entry)
             self._schedule_cover_cache(entry)
+            self._notify_trainer_entry(entry)
             imported += 1
             self.logger.info(f"Auto-imported to library: {entry.title}")
         return imported
@@ -2090,6 +2225,7 @@ class DownloadService:
             )
             self.library.add(entry)
             self._schedule_cover_cache(entry)
+            self._notify_trainer_entry(entry)
             pending.entry_id = entry.entry_id
             changed = True
             self.logger.info(
@@ -2108,9 +2244,77 @@ class DownloadService:
             return {"ok": False, "error": "no_exe", "needs_picker": True}
         try:
             launch_play_target(entry.exe_path)
+            if self.settings.trainer_auto_run:
+                self._autorun_trainer(entry)
             return {"ok": True}
         except Exception as exc:
             return {"ok": False, "error": str(exc)}
+
+    def launch_trainer(self, entry_id: str) -> dict[str, Any]:
+        entry = self.library.get(entry_id)
+        if not entry:
+            return {"ok": False, "error": "Game not found."}
+        if not self.settings.trainer_on_library and not self.settings.trainer_auto_run:
+            return {"ok": False, "error": "Trainers are disabled in Settings."}
+        try:
+            result = self.trainers.launch_for_entry(
+                entry,
+                fetch_if_needed=True,
+            )
+            if result.get("ok"):
+                result.update(self.trainers.status_for(entry))
+            return result
+        except Exception as exc:
+            return {"ok": False, "error": str(exc)}
+
+    def _autorun_trainer(self, entry: LibraryEntry) -> None:
+        def worker() -> None:
+            try:
+                time.sleep(1.2)
+                self.trainers.launch_for_entry(
+                    entry,
+                    fetch_if_needed=self.settings.trainer_auto_fetch,
+                )
+            except Exception as exc:
+                self.logger.info(f"Auto-run trainer failed for {entry.title}: {exc}")
+
+        threading.Thread(
+            target=worker,
+            name=f"trainer-autorun-{entry.entry_id[:8]}",
+            daemon=True,
+        ).start()
+
+    def _notify_trainer_entry(self, entry: LibraryEntry) -> None:
+        trainers = getattr(self, "trainers", None)
+        if not trainers:
+            return
+        if not (
+            self.settings.trainer_auto_fetch
+            or self.settings.trainer_on_library
+            or self.settings.trainer_auto_run
+        ):
+            return
+        trainers.notify_entry(
+            entry,
+            download=self.settings.trainer_auto_fetch,
+            probe=self.settings.trainer_auto_fetch or self.settings.trainer_on_library,
+        )
+
+    def _sync_trainers(self) -> None:
+        trainers = getattr(self, "trainers", None)
+        if not trainers:
+            return
+        if not (
+            self.settings.trainer_auto_fetch
+            or self.settings.trainer_on_library
+            or self.settings.trainer_auto_run
+        ):
+            return
+        trainers.scan_library(
+            list(self.library.entries),
+            download=self.settings.trainer_auto_fetch,
+            probe=self.settings.trainer_auto_fetch or self.settings.trainer_on_library,
+        )
 
     def get_entry_exes(self, entry_id: str) -> dict[str, Any]:
         entry = self.library.get(entry_id)
@@ -2162,6 +2366,10 @@ class DownloadService:
                 }
         elif install_dir:
             self.logger.warn(f"Install folder not found during delete: {install_dir}")
+
+        trainers = getattr(self, "trainers", None)
+        if trainers:
+            trainers.remove_for_entry(entry.entry_id, entry.title)
 
         self.library.remove(entry_id)
         self.emit("library_updated", {})

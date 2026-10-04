@@ -20,9 +20,9 @@ DEFAULT_CONNECTIONS = 8
 
 SUPPORTED_LANGUAGES = ("en", "zh", "es", "tl")
 DEFAULT_LANGUAGE = "en"
-APP_VERSION = "2.7.9"
+APP_VERSION = "2.8.0"
 APP_BRAND = "QuickPlay"
-APP_TITLE = "QuickPlay 2.7.9"
+APP_TITLE = "QuickPlay 2.8.0"
 
 STORE_SERVER1 = "server1"
 STORE_SERVER2 = "server2"
@@ -52,6 +52,9 @@ class AppSettings:
     store: str = DEFAULT_STORE
     controller_enabled: bool = False
     allow_big_picture: bool = False
+    trainer_auto_fetch: bool = False
+    trainer_auto_run: bool = False
+    trainer_on_library: bool = False
 
 
 class SettingsManager:
@@ -100,6 +103,9 @@ class SettingsManager:
             store=_normalize_store(raw.get("store")),
             controller_enabled=bool(raw.get("controller_enabled", False)),
             allow_big_picture=bool(raw.get("allow_big_picture", False)),
+            trainer_auto_fetch=bool(raw.get("trainer_auto_fetch", False)),
+            trainer_auto_run=bool(raw.get("trainer_auto_run", False)),
+            trainer_on_library=bool(raw.get("trainer_on_library", False)),
         )
         from store_manager import normalize_store_for_settings
 
@@ -122,6 +128,9 @@ class SettingsManager:
                 "server3_verification_window_full",
                 "controller_enabled",
                 "allow_big_picture",
+                "trainer_auto_fetch",
+                "trainer_auto_run",
+                "trainer_on_library",
             )
         )
         return settings, needs_save
@@ -202,6 +211,18 @@ class SettingsManager:
     def controller_enabled(self) -> bool:
         return self._settings.controller_enabled
 
+    @property
+    def trainer_auto_fetch(self) -> bool:
+        return self._settings.trainer_auto_fetch
+
+    @property
+    def trainer_auto_run(self) -> bool:
+        return self._settings.trainer_auto_run
+
+    @property
+    def trainer_on_library(self) -> bool:
+        return self._settings.trainer_on_library
+
     def set_store(self, store: str) -> None:
         self._settings.store = _normalize_store(store)
         self.save()
@@ -252,6 +273,12 @@ class SettingsManager:
             self._settings.controller_enabled = bool(kwargs["controller_enabled"])
         if "allow_big_picture" in kwargs:
             self._settings.allow_big_picture = bool(kwargs["allow_big_picture"])
+        if "trainer_auto_fetch" in kwargs:
+            self._settings.trainer_auto_fetch = bool(kwargs["trainer_auto_fetch"])
+        if "trainer_auto_run" in kwargs:
+            self._settings.trainer_auto_run = bool(kwargs["trainer_auto_run"])
+        if "trainer_on_library" in kwargs:
+            self._settings.trainer_on_library = bool(kwargs["trainer_on_library"])
         self.save()
         return self._settings
 

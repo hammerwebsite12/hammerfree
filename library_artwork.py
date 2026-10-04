@@ -4,9 +4,14 @@ from __future__ import annotations
 
 import html
 import json
+import os
 import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
+
+import requests
+
+from playzip_api import USER_AGENT
 
 if TYPE_CHECKING:
     from download_logger import DownloadLogger
@@ -48,8 +53,10 @@ def _normalize_key(text: str) -> str:
 def _folder_search_queries(folder_title: str, folder_slug: str) -> list[str]:
     seen: set[str] = set()
     out: list[str] = []
+    short_title = re.split(r"[:\-–|]", folder_title, maxsplit=1)[0].strip()
     for raw in (
         folder_title.replace(".", " ").replace("_", " ").strip(),
+        short_title.replace(".", " ").replace("_", " ").strip(),
         folder_slug.replace("-", " ").strip(),
         folder_slug.strip(),
     ):
@@ -108,6 +115,69 @@ def _normalize_poster_url(client: Any, image: str) -> str:
 def _looks_like_hero_url(url: str) -> bool:
     lower = (url or "").lower()
     return any(marker in lower for marker in _HERO_URL_MARKERS)
+
+
+def _looks_like_bad_library_cover_url(url: str) -> bool:
+    """Wide/micro Steam assets that look broken when scaled into a 2:3 capsule."""
+    if not url:
+        return True
+    if _looks_like_hero_url(url):
+        return True
+    lower = url.lower()
+    if "capsule_231" in lower or "capsule_616x353" in lower:
+        return True
+    match = re.search(r"capsule_(\d+)x(\d+)", lower)
+    if match:
+        width, height = int(match.group(1)), int(match.group(2))
+        if width >= height * 1.15:
+            return True
+    if "header_image" in lower or "/header." in lower:
+        return True
+    return False
+
+
+def _steam_portrait_cover_urls(app_id: str) -> list[str]:
+    bases = (
+        "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps",
+        "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps",
+        "https://cdn.akamai.steamstatic.com/steam/apps",
+    )
+    names = (
+        "library_600x900_2x.jpg",
+        "library_600x900.jpg",
+        "library_capsule_2x.jpg",
+    )
+    urls: list[str] = []
+    seen: set[str] = set()
+    for base in bases:
+        for name in names:
+            url = f"{base}/{app_id}/{name}"
+            if url not in seen:
+                seen.add(url)
+                urls.append(url)
+    return urls
+
+
+def _steam_cover_url_reachable(url: str) -> bool:
+    try:
+        response = requests.head(
+            url,
+            timeout=8,
+            allow_redirects=True,
+            headers={"User-Agent": USER_AGENT},
+        )
+        if response.status_code == 405:
+            response = requests.get(
+                url,
+                timeout=12,
+                stream=True,
+                headers={"User-Agent": USER_AGENT},
+            )
+            response.raise_for_status()
+            return True
+        return response.status_code < 400 and int(response.headers.get("Content-Length") or 1) > 512
+    except Exception:
+        return False
 
 
 def _decode_anker_listing(raw: str) -> dict[str, Any] | None:
@@ -179,7 +249,7 @@ def _resolve_via_search(
             if not match or not getattr(match, "image_url", ""):
                 continue
             image_url = getattr(match, "image_url", "")
-            if _looks_like_hero_url(image_url):
+            if _looks_like_bad_library_cover_url(image_url):
                 continue
             if logger:
                 logger.info(
@@ -226,11 +296,79 @@ def _resolve_via_game_page(
     return None
 
 
+def _find_steam_app_id(install_dir: str) -> str:
+    root = os.path.abspath(install_dir or "")
+    if not root or not os.path.isdir(root):
+        return ""
+    for dirpath, dirnames, filenames in os.walk(root):
+        depth = dirpath[len(root) :].count(os.sep)
+        if depth > 6:
+            dirnames.clear()
+            continue
+        if "steam_appid.txt" not in filenames:
+            continue
+        path = os.path.join(dirpath, "steam_appid.txt")
+        try:
+            with open(path, encoding="utf-8", errors="ignore") as handle:
+                app_id = handle.read().strip()
+        except OSError:
+            continue
+        if app_id.isdigit():
+            return app_id
+    return ""
+
+
+def _resolve_via_steam_app(
+    app_id: str,
+    logger: DownloadLogger | None,
+) -> ArtworkMatch | None:
+    if not app_id.isdigit():
+        return None
+    try:
+        response = requests.get(
+            "https://store.steampowered.com/api/appdetails",
+            params={"appids": app_id},
+            timeout=15,
+            headers={"User-Agent": USER_AGENT},
+        )
+        response.raise_for_status()
+        payload = response.json().get(app_id) or {}
+        if not payload.get("success"):
+            return None
+        data = payload.get("data") or {}
+        image_url = ""
+        for candidate in _steam_portrait_cover_urls(app_id):
+            if _steam_cover_url_reachable(candidate):
+                image_url = candidate
+                break
+        if not image_url:
+            fallback = str(data.get("capsule_image") or data.get("header_image") or "").strip()
+            if fallback and not _looks_like_bad_library_cover_url(fallback):
+                image_url = fallback
+        if not image_url or _looks_like_bad_library_cover_url(image_url):
+            return None
+        title = html.unescape(str(data.get("name") or "").strip())
+        if logger:
+            logger.info(f"Cover art resolved via Steam app {app_id}: {title or app_id}")
+        return ArtworkMatch(
+            game_id=app_id,
+            title=title,
+            image_url=image_url,
+            source="steam",
+        )
+    except Exception as exc:
+        if logger:
+            logger.debug(f"Steam artwork lookup failed for {app_id}: {exc}")
+        return None
+
+
 def resolve_library_artwork(
     store: StoreManager,
     folder_title: str,
     folder_slug: str,
     logger: DownloadLogger | None = None,
+    *,
+    install_dir: str = "",
 ) -> ArtworkMatch | None:
     """Look up portrait capsule art — browse/search poster first, never og:image."""
     from store_manager import STORE_SERVER1, STORE_SERVER2
@@ -243,11 +381,24 @@ def resolve_library_artwork(
     if hit:
         return hit
 
-    return _resolve_via_game_page(store, folder_title, folder_slug, store_order, logger)
+    hit = _resolve_via_game_page(store, folder_title, folder_slug, store_order, logger)
+    if hit:
+        return hit
+
+    slug = (folder_slug or "").strip()
+    if slug.isdigit():
+        hit = _resolve_via_steam_app(slug, logger)
+        if hit:
+            return hit
+
+    app_id = _find_steam_app_id(install_dir)
+    if app_id:
+        return _resolve_via_steam_app(app_id, logger)
+    return None
 
 
 def should_refresh_artwork(image_url: str) -> bool:
-    """True when library row has no art or a wide hero/screenshot URL."""
+    """True when library row has no art or a wide/broken cover URL."""
     if not image_url:
         return True
-    return _looks_like_hero_url(image_url)
+    return _looks_like_bad_library_cover_url(image_url)

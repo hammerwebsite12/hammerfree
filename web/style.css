@@ -587,11 +587,31 @@ body.controller-mode .help-contact-card.gp-focused {
   margin-top: 8px;
   width: 100%;
   justify-content: center;
+  flex-wrap: wrap;
 }
 
 .library-actions .btn {
   padding: 6px 10px;
   font-size: 0.75rem;
+}
+
+.library-actions .trainer-btn {
+  flex: 1 1 100%;
+  background: rgba(255, 179, 71, 0.1);
+  border: 1px solid rgba(255, 179, 71, 0.45);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.library-actions .trainer-btn:hover {
+  background: rgba(255, 179, 71, 0.2);
+  border-color: var(--accent);
+  color: #ffd89a;
+}
+
+.library-actions .trainer-btn:disabled {
+  opacity: 0.65;
+  cursor: wait;
 }
 
 .exe-label {
@@ -1051,6 +1071,25 @@ body.controller-mode .help-contact-card.gp-focused {
   accent-color: var(--accent);
   width: 16px;
   height: 16px;
+}
+
+.setting-section {
+  margin: 8px 0 28px;
+  padding: 16px 16px 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #121010;
+}
+
+.setting-section h3 {
+  color: var(--accent);
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.setting-section .setting-group {
+  margin-bottom: 16px;
 }
 
 .setting-actions {

@@ -30,6 +30,7 @@ a = Analysis(
         "library_manager",
         "library_scan",
         "library_artwork",
+        "trainer_service",
         "device_fingerprint",
         "hardware_snapshot",
         "native_dialog",

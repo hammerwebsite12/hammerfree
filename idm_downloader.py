@@ -517,6 +517,11 @@ class IDMDownloader:
                 return
 
             if os.path.exists(part_path):
+                part_size = os.path.getsize(part_path)
+                if task.total_size > 0 and part_size < task.total_size:
+                    raise IOError(
+                        f"Download incomplete: got {part_size:,} of {task.total_size:,} bytes"
+                    )
                 os.replace(part_path, task.dest_path)
 
             task.state = DownloadState.COMPLETED

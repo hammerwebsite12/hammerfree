@@ -1,5 +1,18 @@
 # QuickPlay Release Notes
 
+## v2.8.0 — October 4, 2026 (local test)
+
+### Fling trainers
+- Settings **Fling Trainers** section: Auto-fetch trainer, Auto-run trainer, Trainer on My Library
+- Auto-fetch searches [flingtrainer.com](https://flingtrainer.com/) for library game titles and downloads a matching trainer
+- Auto-run launches the matching trainer shortly after PLAY
+- My Library shows a **Launch trainer** button when a trainer is available (gated by the library switch)
+
+### Build
+- `APP_VERSION = 2.8.0` — local rebuild only; installer/public repo not updated yet
+
+---
+
 ## v2.7.9 — September 29, 2026
 
 ### Server 2 (Anker)

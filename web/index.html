@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>QuickPlay 2.7.9</title>
+  <title>QuickPlay 2.8.0</title>
   <link rel="icon" href="/favicon.ico" type="image/x-icon" />
   <link rel="stylesheet" href="/static/style.css" />
   <link rel="stylesheet" href="/static/bigpicture.css" />
@@ -86,7 +86,7 @@
   <section id="panel-settings" class="panel">
     <div class="settings-wrap">
       <h2 data-i18n="settings.heading">Settings</h2>
-      <p class="setting-hint settings-version" id="appVersionLabel">Version 2.7.9</p>
+      <p class="setting-hint settings-version" id="appVersionLabel">Version 2.8.0</p>
       <p class="setting-hint" id="libraryPathHint"></p>
 
       <div class="setting-group">
@@ -166,6 +166,35 @@
           <span data-i18n="settings.defender">Add download folder to Microsoft Defender exclusions (Windows)</span>
         </label>
         <p class="setting-hint" id="defenderStatus"></p>
+      </div>
+
+      <div class="setting-section" id="trainerSettingsSection">
+        <h3 data-i18n="settings.trainerHeading">Fling Trainers</h3>
+        <p class="setting-hint" data-i18n="settings.trainerIntro">Download and launch Fling trainers that match games in My Library.</p>
+
+        <div class="setting-group setting-check">
+          <label>
+            <input type="checkbox" id="trainerAutoFetchCheck" />
+            <span data-i18n="settings.trainerAutoFetch">Auto-fetch trainer</span>
+          </label>
+          <p class="setting-hint" data-i18n="settings.trainerAutoFetchHint">When a game is in My Library, search Fling and download a matching trainer in the background.</p>
+        </div>
+
+        <div class="setting-group setting-check">
+          <label>
+            <input type="checkbox" id="trainerAutoRunCheck" />
+            <span data-i18n="settings.trainerAutoRun">Auto-run trainer</span>
+          </label>
+          <p class="setting-hint" data-i18n="settings.trainerAutoRunHint">When you press PLAY, also launch the trainer that matches the game name.</p>
+        </div>
+
+        <div class="setting-group setting-check">
+          <label>
+            <input type="checkbox" id="trainerOnLibraryCheck" />
+            <span data-i18n="settings.trainerOnLibrary">Trainer on My Library</span>
+          </label>
+          <p class="setting-hint" data-i18n="settings.trainerOnLibraryHint">Show a Launch trainer button on library cards when a matching trainer is available.</p>
+        </div>
       </div>
 
       <div class="setting-group" id="redistGroup">

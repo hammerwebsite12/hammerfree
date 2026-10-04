@@ -412,6 +412,143 @@ def _find_7z_windows() -> str | None:
     return None
 
 
+DOWNLOAD_ARCHIVE_EXTENSIONS = (".zip", ".rar", ".7z")
+
+
+def is_download_archive_path(path: str) -> bool:
+    return os.path.splitext(path or "")[1].lower() in DOWNLOAD_ARCHIVE_EXTENSIONS
+
+
+def _zip_has_end_of_central_directory(path: str) -> bool:
+    try:
+        with open(path, "rb") as handle:
+            handle.seek(0, os.SEEK_END)
+            file_size = handle.tell()
+            if file_size < 22:
+                return False
+            read_size = min(file_size, 65535 + 22)
+            handle.seek(max(0, file_size - read_size))
+            tail = handle.read()
+        return tail.rfind(b"PK\x05\x06") >= 0
+    except OSError:
+        return False
+
+
+def _seven_zip_list_ok(archive_path: str, *, timeout: float = 45.0) -> bool | None:
+    """True if 7-Zip can read the archive header; False if corrupt; None if unknown (timeout)."""
+    seven_zip = _resolve_7z()
+    if not seven_zip:
+        return None
+    archive_arg = long_path(archive_path) if sys.platform == "win32" else archive_path
+    popen_kwargs: dict = {
+        "stdout": subprocess.DEVNULL,
+        "stderr": subprocess.DEVNULL,
+        "timeout": timeout,
+    }
+    if sys.platform == "win32":
+        popen_kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+    try:
+        result = subprocess.run(
+            [seven_zip, "l", archive_arg, "-bb0", "-bd"],
+            **popen_kwargs,
+        )
+        return result.returncode == 0
+    except subprocess.TimeoutExpired:
+        return None
+    except OSError:
+        return False
+
+
+def _seven_zip_test_ok(archive_path: str, *, timeout: float = 120.0) -> bool | None:
+    seven_zip = _resolve_7z()
+    if not seven_zip:
+        return None
+    archive_arg = long_path(archive_path) if sys.platform == "win32" else archive_path
+    popen_kwargs: dict = {
+        "stdout": subprocess.DEVNULL,
+        "stderr": subprocess.DEVNULL,
+        "timeout": timeout,
+    }
+    if sys.platform == "win32":
+        popen_kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+    try:
+        result = subprocess.run(
+            [seven_zip, "t", archive_arg, "-bb0", "-bd"],
+            **popen_kwargs,
+        )
+        return result.returncode == 0
+    except subprocess.TimeoutExpired:
+        return None
+    except OSError:
+        return False
+
+
+def archive_is_broken(archive_path: str) -> bool:
+    """True when an archive is clearly incomplete or corrupt (safe to delete)."""
+    if not archive_path or not os.path.isfile(archive_path):
+        return False
+    try:
+        size = os.path.getsize(archive_path)
+    except OSError:
+        return False
+    if size < 512:
+        return True
+
+    ext = os.path.splitext(archive_path)[1].lower()
+    if ext == ".zip":
+        try:
+            with zipfile.ZipFile(archive_path, "r") as zf:
+                if not zf.namelist():
+                    return True
+                if size <= 50 * 1024 * 1024:
+                    return zf.testzip() is not None
+                return not _zip_has_end_of_central_directory(archive_path)
+        except (zipfile.BadZipFile, OSError, RuntimeError):
+            return True
+        return False
+    if ext in (".7z", ".rar"):
+        with open(archive_path, "rb") as handle:
+            header = handle.read(6)
+        if ext == ".7z" and header != b"7z\xbc\xaf\x27\x1c":
+            return True
+        if ext == ".rar" and not header.startswith(b"Rar!"):
+            return True
+        listed = _seven_zip_list_ok(archive_path)
+        if listed is False:
+            return True
+        if listed is True and size <= 200 * 1024 * 1024:
+            tested = _seven_zip_test_ok(archive_path, timeout=60.0)
+            return tested is False
+        return False
+    return False
+
+
+def archive_is_usable(archive_path: str) -> bool:
+    """True when a finished download archive looks complete enough to extract."""
+    if archive_is_broken(archive_path):
+        return False
+    if not archive_path or not os.path.isfile(archive_path):
+        return False
+    try:
+        size = os.path.getsize(archive_path)
+    except OSError:
+        return False
+    if size < 512:
+        return False
+
+    ext = os.path.splitext(archive_path)[1].lower()
+    if ext == ".zip":
+        try:
+            with zipfile.ZipFile(archive_path, "r") as zf:
+                return bool(zf.namelist())
+        except (zipfile.BadZipFile, OSError, RuntimeError):
+            return False
+    if ext in (".7z", ".rar"):
+        listed = _seven_zip_list_ok(archive_path)
+        return listed is True
+    return False
+
+
 def format_bytes(num: int) -> str:
     if num <= 0:
         return "0 B"

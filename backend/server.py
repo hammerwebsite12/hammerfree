@@ -194,6 +194,9 @@ class SettingsUpdate(BaseModel):
     store: str | None = None
     controller_enabled: bool | None = None
     allow_big_picture: bool | None = None
+    trainer_auto_fetch: bool | None = None
+    trainer_auto_run: bool | None = None
+    trainer_on_library: bool | None = None
 
 
 @app.get("/")
@@ -326,7 +329,10 @@ async def api_update_settings(body: SettingsUpdate):
         f"connections={settings.connections}, show_logs={settings.show_logs}, "
         f"verification_window_full={settings.verification_window_full}, "
         f"server3_verification_window_full={settings.server3_verification_window_full}, "
-        f"store={settings.store}"
+        f"store={settings.store}, "
+        f"trainer_auto_fetch={settings.trainer_auto_fetch}, "
+        f"trainer_auto_run={settings.trainer_auto_run}, "
+        f"trainer_on_library={settings.trainer_on_library}"
     )
     return settings.to_dict()
 
@@ -679,6 +685,14 @@ async def api_launch(entry_id: str):
         if result.get("needs_picker"):
             return {"ok": False, "needs_picker": True}
         raise HTTPException(400, result.get("error", "Launch failed"))
+    return result
+
+
+@app.post("/api/library/{entry_id}/trainer/launch")
+async def api_launch_trainer(entry_id: str):
+    result = await asyncio.to_thread(get_service().launch_trainer, entry_id)
+    if not result.get("ok"):
+        raise HTTPException(400, result.get("error", "Trainer launch failed"))
     return result
 
 

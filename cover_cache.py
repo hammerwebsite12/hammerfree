@@ -31,6 +31,37 @@ def cover_path_for_entry(entry_id: str) -> str:
     return os.path.join(cache_dir(), f"{safe}.img")
 
 
+def remove_cached_cover(entry_id: str) -> None:
+    path = cover_path_for_entry(entry_id)
+    for candidate in (path, f"{path}.tmp"):
+        try:
+            if os.path.isfile(candidate):
+                os.remove(candidate)
+        except OSError:
+            pass
+
+
+def _normalize_cover_bytes(data: bytes) -> bytes:
+    """Crop/scale to portrait capsule (2:3) for consistent library cards."""
+    if not data:
+        return data
+    try:
+        import io
+
+        from PIL import Image
+
+        from ui_components import load_cover_pil
+
+        image = load_cover_pil(data, 600)
+        if image is None:
+            return data
+        buffer = io.BytesIO()
+        image.save(buffer, format="JPEG", quality=88, optimize=True)
+        return buffer.getvalue()
+    except Exception:
+        return data
+
+
 def has_cached_cover(entry_id: str) -> bool:
     path = cover_path_for_entry(entry_id)
     try:
@@ -86,7 +117,7 @@ def cache_cover_for_entry(
                 headers={"User-Agent": USER_AGENT},
             )
             response.raise_for_status()
-            data = response.content
+            data = _normalize_cover_bytes(response.content)
             if not data:
                 return False
             tmp_path = f"{path}.tmp"

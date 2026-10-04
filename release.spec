@@ -56,6 +56,7 @@ a = Analysis(
         "storage_requirements",
         "hwid_obfuscation",
         "license_manager",
+        "trainer_service",
         "cover_cache",
         "banner_cache",
         "native_dialog",
@@ -102,5 +103,5 @@ exe = EXE(
     entitlements_file=None,
     uac_admin=True,
     manifest="playzip.manifest",
-    icon=os.path.join(SPECPATH, "build", "quickplay-pyinstaller.ico"),
+    icon=os.path.join(SPECPATH, "quickplay.ico"),
 )

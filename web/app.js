@@ -919,6 +919,12 @@ function loadSettingsForm() {
     s.server3_verification_window_full === true;
   $("#controllerEnabledCheck").checked = s.controller_enabled === true;
   $("#allowBigPictureCheck").checked = s.allow_big_picture === true;
+  const autoFetch = $("#trainerAutoFetchCheck");
+  const autoRun = $("#trainerAutoRunCheck");
+  const onLibrary = $("#trainerOnLibraryCheck");
+  if (autoFetch) autoFetch.checked = s.trainer_auto_fetch === true;
+  if (autoRun) autoRun.checked = s.trainer_auto_run === true;
+  if (onLibrary) onLibrary.checked = s.trainer_on_library === true;
   $("#disableAnnouncementCheck").checked = s.disable_announcement_on_startup === true;
   $("#defenderCheck").checked = s.defender_exclusion !== false;
   updateDefenderStatus(s.defender_status || "");
@@ -1109,6 +1115,9 @@ $("#saveSettingsBtn").addEventListener("click", async () => {
       server3_verification_window_full: $("#server3VerificationWindowFullCheck").checked,
       controller_enabled: $("#controllerEnabledCheck").checked,
       allow_big_picture: $("#allowBigPictureCheck").checked,
+      trainer_auto_fetch: $("#trainerAutoFetchCheck").checked,
+      trainer_auto_run: $("#trainerAutoRunCheck").checked,
+      trainer_on_library: $("#trainerOnLibraryCheck").checked,
       disable_announcement_on_startup: $("#disableAnnouncementCheck").checked,
       defender_exclusion: $("#defenderCheck").checked,
       store: $("#storeSelect").value,
@@ -1128,6 +1137,7 @@ $("#saveSettingsBtn").addEventListener("click", async () => {
       if (state.tab !== "browse") switchTab("browse");
       await loadBrowse();
     }
+    if (state.tab === "library") renderLibrary();
     if (state.config) {
       $("#rootHint").textContent = t("status.gamesFolder", { dir: state.settings.download_dir });
     }
@@ -2264,6 +2274,20 @@ function renderLibrary() {
     actions.querySelector(".play-btn").addEventListener("click", (e) => { e.stopPropagation(); launchGame(entry.entry_id); });
     actions.querySelector(".exe-btn").addEventListener("click", (e) => { e.stopPropagation(); openLibraryExePicker(entry.entry_id); });
     actions.querySelector(".del-btn").addEventListener("click", (e) => { e.stopPropagation(); deleteGame(entry.entry_id, entry.title, entry.install_dir); });
+    const showTrainer = state.settings?.trainer_on_library === true && (entry.trainer_available || entry.trainer_downloaded || entry.trainer_fetching);
+    if (showTrainer) {
+      const trainerBtn = document.createElement("button");
+      trainerBtn.className = "btn trainer-btn";
+      trainerBtn.disabled = !!entry.trainer_fetching;
+      trainerBtn.textContent = entry.trainer_fetching
+        ? t("library.trainerFetching")
+        : t("library.trainer");
+      trainerBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        launchTrainer(entry.entry_id, trainerBtn);
+      });
+      actions.appendChild(trainerBtn);
+    }
     wrap.appendChild(actions);
 
     grid.appendChild(wrap);
@@ -2282,6 +2306,28 @@ async function launchGame(entryId) {
     setStatus("Launching game...");
   } catch (e) {
     setStatus(`Launch failed: ${e.message}`);
+  }
+}
+
+async function launchTrainer(entryId, btn) {
+  const entry = (state.library || []).find((e) => e.entry_id === entryId);
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = t("library.trainerLaunching");
+  }
+  try {
+    const res = await api(`/api/library/${entryId}/trainer/launch`, { method: "POST" });
+    if (entry && res) {
+      if (typeof res.trainer_available === "boolean") entry.trainer_available = res.trainer_available;
+      if (typeof res.trainer_downloaded === "boolean") entry.trainer_downloaded = res.trainer_downloaded;
+      entry.trainer_fetching = false;
+      if (res.trainer_name) entry.trainer_name = res.trainer_name;
+    }
+    setStatus(t("status.trainerLaunched", { title: displayText(entry?.title || "") }));
+  } catch (e) {
+    setStatus(t("status.trainerLaunchFailed", { msg: e.message }));
+  } finally {
+    if (state.tab === "library") renderLibrary();
   }
 }
 
@@ -2610,6 +2656,17 @@ function connectSSE() {
           else if (state.tab === "browse") renderBrowseGrid(state.games);
           if (state.detailGame) updateDetailLibraryState();
         });
+      }
+      if (type === "trainer_updated") {
+        const entry = (state.library || []).find((e) => e.entry_id === payload.entry_id);
+        if (entry) {
+          entry.trainer_available = !!payload.trainer_available;
+          entry.trainer_downloaded = !!payload.trainer_downloaded;
+          entry.trainer_fetching = !!payload.trainer_fetching;
+          if (payload.trainer_name) entry.trainer_name = payload.trainer_name;
+        }
+        if (payload.message) setStatus(payload.message);
+        if (state.tab === "library") renderLibrary();
       }
       if (type === "settings_updated") {
         state.settings = payload;

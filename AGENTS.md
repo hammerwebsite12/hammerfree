@@ -15,7 +15,7 @@ touching download, resume, library, or build logic.
 
 ## What this app is
 
-A Windows desktop app (**QuickPlay 2.7.9**) that browses game catalogs
+A Windows desktop app (**QuickPlay 2.8.0**) that browses game catalogs
 (**Server 1** = playzip mirrors, **Server 2** = ankergames.to with ankergames.net fallback), downloads
 games with an IDM-style multi-connection downloader, auto-extracts archives,
 and manages an installed-games library with a PLAY button.
@@ -57,7 +57,8 @@ the user to close it manually, then rebuild.
 | `pending_exe_store.py` | Persists pending EXE-picker states to `.quickplay_pending_exe.json` (auto-migrates legacy `.playzip_pending_exe.json`) |
 | `library_manager.py` | `library.json` CRUD, folder-name sanitizing, HTML-entity decoding |
 | `store_manager.py` | Dual-store manager: **Server 1** (`PlayZipClient`) / **Server 2** (`AnkerGamesClient`), license Worker URL switching, browse/search failover, `store_changed` SSE |
-| `settings_manager.py` | `settings.json`; `library_path` pinned to app root; `store` (`server1`/`server2`); `APP_VERSION` / `APP_TITLE` (e.g. `2.7.5-beta`) |
+| `trainer_service.py` | Fling trainer search/download/match/launch; auto-fetch + auto-run |
+| `settings_manager.py` | `settings.json`; `library_path` pinned to app root; `store` (`server1`/`server2`); `APP_VERSION` / `APP_TITLE` (e.g. `2.8.0`) |
 | `playzip_api.py` | Server 1 upstream: browse/search/resolve download URL, mirror failover, Worker `/sign` |
 | `anker/anker_api.py` | Server 2 upstream: browse/search, Worker `/resolve` or local CSRF formula |
 | `anker/anker_game_details.py` | Server 2 game detail panel (JSON-LD + Steam API) |
