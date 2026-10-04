@@ -42,7 +42,7 @@ if ($status) {
 
 Set-Location $PSScriptRoot
 $tagLine = Select-String -Path 'install.ps1' -Pattern "ReleaseTag\s*=\s*'([^']+)'" | Select-Object -First 1
-$releaseTag = if ($tagLine) { $tagLine.Matches.Groups[1].Value } else { 'quickplay-v2.7.9' }
+$releaseTag = if ($tagLine) { $tagLine.Matches.Groups[1].Value } else { 'quickplay-v2.8.0' }
 
 Write-Host "Uploading release asset $releaseTag..." -ForegroundColor Cyan
 $prevEap = $ErrorActionPreference

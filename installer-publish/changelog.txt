@@ -1,6 +1,14 @@
 QuickPlay Changelog
 ===================
 
+v2.8.0 — 2026-10-04 (installer payload refresh)
+----------------------------------------------
+- Fling trainers: auto-fetch, auto-run on PLAY, Launch trainer on My Library
+- Library cover art: Steam portrait capsules, 600x900 cache normalize, bad URL auto-heal
+- Failed downloads: auto-remove corrupt/orphan archives; safer incomplete-download handling
+- Delete library game also removes matching trainer files
+- PyArmor-protected build (latest dist/QuickPlay.exe)
+
 v2.7.9 — 2026-09-29 (installer payload refresh)
 ----------------------------------------------
 - Server 2: official interim catalog host ankergames.to (ankergames.net fallback when DNS returns)
