@@ -1,0 +1,3 @@
+QuickPlay 2.8.1-beta installer (quickplay-beta channel)
+- Split WireGuard VPN + auto VPN fallback (beta test build)
+- Installs side-by-side as "QuickPlay Beta" — stable quickplay branch unchanged
