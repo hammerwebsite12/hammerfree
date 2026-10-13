@@ -1,3 +1,4 @@
 QuickPlay 2.8.1-beta installer (quickplay-beta channel)
 - Split WireGuard VPN + auto VPN fallback (beta test build)
+- My Library no longer imports the vpn_configs app folder as a game
 - Same install folder as stable (C:\Program Files (x86)\QuickPlay); stable quickplay branch unchanged

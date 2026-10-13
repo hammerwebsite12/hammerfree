@@ -35,7 +35,14 @@ if ($betaRemote) {
     git worktree add -b $betaBranch $worktree hammerfree-install/quickplay
 }
 Set-Location $worktree
-git checkout $betaBranch 2>$null
+$prevEap = $ErrorActionPreference
+$ErrorActionPreference = 'Continue'
+git checkout $betaBranch
+if ($LASTEXITCODE -ne 0) {
+    $ErrorActionPreference = $prevEap
+    throw "Failed to checkout $betaBranch in publish worktree"
+}
+$ErrorActionPreference = $prevEap
 
 Copy-Item -Path (Join-Path $PSScriptRoot '*') -Destination $worktree -Force -Exclude '.git'
 
