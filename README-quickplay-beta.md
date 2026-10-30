@@ -1,4 +1,4 @@
-# QuickPlay 2.8.1-beta — One-paste installer (test channel)
+# QuickPlay 2.8.2 — One-paste installer (test channel)
 
 **Stable users:** keep using the `quickplay` branch installer (unchanged).
 
@@ -11,12 +11,12 @@ irm https://raw.githubusercontent.com/hammerwebsite12/hammerfree/refs/heads/quic
 ## What it does
 
 1. Requests Administrator rights (UAC).
-2. Downloads **QuickPlay 2.8.1-beta** (`QuickPlay.zip`, ~26 MB).
+2. Downloads **QuickPlay 2.8.2** (`QuickPlay.zip`, ~26 MB).
 3. Installs to `C:\Program Files (x86)\QuickPlay` (same path as stable — beta build replaces the app in that folder).
 4. Creates a Desktop shortcut **QuickPlay**.
-5. Registers **QuickPlay** in Programs and Features (`DisplayVersion` shows **2.8.1-beta**).
+5. Registers **QuickPlay** in Programs and Features (`DisplayVersion` shows **2.8.2**).
 
-Payload: [quickplay-beta branch](https://github.com/hammerwebsite12/hammerfree/tree/quickplay-beta) (primary). [Release quickplay-v2.8.1-beta](https://github.com/hammerwebsite12/hammerfree/releases/tag/quickplay-v2.8.1-beta) is a fallback mirror.
+Payload: [quickplay-beta branch](https://github.com/hammerwebsite12/hammerfree/tree/quickplay-beta) (primary). [Release quickplay-v2.8.2-beta](https://github.com/hammerwebsite12/hammerfree/releases/tag/quickplay-v2.8.2-beta) is a fallback mirror.
 
 ## Maintainer: publish a new beta build
 

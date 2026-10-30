@@ -1,4 +1,4 @@
-# Publish QuickPlay 2.8.1-beta installer to hammerwebsite12/hammerfree (quickplay-beta branch + release)
+# Publish QuickPlay 2.8.2 installer to hammerwebsite12/hammerfree (quickplay-beta branch + release)
 # Does NOT modify the stable quickplay branch.
 # Requires: gh auth login with push access to hammerwebsite12/hammerfree
 $ErrorActionPreference = 'Stop'
