@@ -52,7 +52,7 @@ if ($status) {
     $ver = (Select-String -Path (Join-Path $worktree 'install.ps1') -Pattern '\$Version\s*=\s*''([^'']+)''' | Select-Object -First 1).Matches.Groups[1].Value
     git commit -m "Ship QuickPlay $ver beta installer (quickplay-beta branch)."
     $token = gh auth token
-    git remote set-url origin "https://x-access-token:${token}@github.com/hammerwebsite12/hammerfree.git"
+    git remote set-url hammerfree-install "https://x-access-token:${token}@github.com/hammerwebsite12/hammerfree.git"
     git push -u hammerfree-install $betaBranch
 } else {
     Write-Host "No installer file changes to push on $betaBranch." -ForegroundColor Yellow
@@ -68,7 +68,7 @@ $ErrorActionPreference = 'Continue'
 gh release view $releaseTag --repo hammerwebsite12/hammerfree 2>$null | Out-Null
 $releaseExists = ($LASTEXITCODE -eq 0)
 $ErrorActionPreference = $prevEap
-$notes = "QuickPlay 2.8.1-beta test installer. One-paste: refs/heads/quickplay-beta/install.ps1 (stable remains quickplay branch)."
+$notes = "QuickPlay 2.8.2 beta test installer. One-paste: refs/heads/quickplay-beta/install.ps1 (stable remains quickplay branch)."
 if ($releaseExists) {
     gh release upload $releaseTag QuickPlay.zip --repo hammerwebsite12/hammerfree --clobber
 } else {

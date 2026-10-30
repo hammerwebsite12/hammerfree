@@ -1,4 +1,4 @@
-QuickPlay 2.8.1-beta installer (quickplay-beta channel)
-- Split WireGuard VPN + auto VPN fallback (beta test build)
-- My Library no longer imports the vpn_configs app folder as a game
-- Same install folder as stable (C:\Program Files (x86)\QuickPlay); stable quickplay branch unchanged
+QuickPlay 2.8.2 installer (quickplay-beta channel)
+- Server 2: IDM multi-connection downloads again; file GET uses same route as gate verification (fixes VPN + expired-link retry loop)
+- dlproxy Referer + HTML error detection; Worker skips single-use /download-file/ hop
+- Split WireGuard VPN + auto fallback (beta test build)
