@@ -1,5 +1,5 @@
 <#
-    QuickPlay 2.8.2 - One-paste installer (test channel)
+    QuickPlay 2.8.7 - One-paste installer (test channel)
     Usage (run in Windows PowerShell):
         irm https://raw.githubusercontent.com/hammerwebsite12/hammerfree/refs/heads/quickplay-beta/install.ps1 | iex
     Stable channel (do not replace with this URL):
@@ -13,17 +13,17 @@ $ProgressPreference     = 'Continue'
 # ---- Config -------------------------------------------------------------
 $Branch       = 'quickplay-beta'
 $Repo         = 'hammerwebsite12/hammerfree'
-$ReleaseTag   = 'quickplay-v2.8.2-beta'
+$ReleaseTag   = 'quickplay-v2.8.7-beta'
 $InstallUrl   = "https://raw.githubusercontent.com/$Repo/refs/heads/$Branch/install.ps1"
 $InstallDir  = 'C:\Program Files (x86)\QuickPlay'
 $AppName     = 'QuickPlay'
-$Version     = '2.8.2'
+$Version     = '2.8.7'
 $MinZipBytes = 20MB
 $MaxZipBytes = 50MB
 $Publisher   = 'QuickPlay'
 $Parts       = @('QuickPlay.zip')
 $ExtraDirs   = @('cache', 'cache\covers')
-$InstallerUa = 'QuickPlayInstaller/2.8.2'
+$InstallerUa = 'QuickPlayInstaller/2.8.7'
 
 # ---- Self-elevate to Administrator --------------------------------------
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
@@ -203,7 +203,7 @@ try {
     $zipInfo = Get-Item $zipPath
     if ($zipInfo.Length -lt $MinZipBytes -or $zipInfo.Length -gt $MaxZipBytes) {
         $zipMb = [math]::Round($zipInfo.Length / 1MB, 1)
-        $msg = 'Downloaded payload looks wrong ({0} MB). Expected QuickPlay v2.8.2 (~26 MB). Try again or install from: https://github.com/{1}/releases/tag/{2}' -f $zipMb, $Repo, $ReleaseTag
+        $msg = 'Downloaded payload looks wrong ({0} MB). Expected QuickPlay v2.8.7 (~26 MB). Try again or install from: https://github.com/{1}/releases/tag/{2}' -f $zipMb, $Repo, $ReleaseTag
         throw $msg
     }
 
@@ -240,7 +240,7 @@ try {
     $exeInfo = Get-Item $exePath
     if ($exeInfo.Length -lt $MinZipBytes -or $exeInfo.Length -gt $MaxZipBytes) {
         $exeMb = [math]::Round($exeInfo.Length / 1MB, 1)
-        $msg = 'Installed QuickPlay.exe looks wrong ({0} MB). Expected QuickPlay v2.8.2 (~26 MB).' -f $exeMb
+        $msg = 'Installed QuickPlay.exe looks wrong ({0} MB). Expected QuickPlay v2.8.7 (~26 MB).' -f $exeMb
         throw $msg
     }
 

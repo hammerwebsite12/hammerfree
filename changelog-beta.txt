@@ -1,4 +1,7 @@
-QuickPlay 2.8.2 installer (quickplay-beta channel)
-- Server 2: IDM multi-connection downloads again; file GET uses same route as gate verification (fixes VPN + expired-link retry loop)
-- dlproxy Referer + HTML error detection; Worker skips single-use /download-file/ hop
-- Split WireGuard VPN + auto fallback (beta test build)
+QuickPlay 2.8.7 installer (quickplay-beta channel)
+
+- Server 2: 2.8.2 download route fixes (same egress as gate, tolerant CDN probe, Referer, HTML rejection)
+- Server 2 gate (2.8.7): verification window only when Settings option is ON; generic dock status when OFF; no native Turnstile auto-click
+- VPN: bundled Singapore (primary) + United States; ordered auto-fallback when store unreachable
+
+Source: dvahana2424-web/playzipdl branch quickplay-2.8.7-windows

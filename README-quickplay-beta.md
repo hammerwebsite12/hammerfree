@@ -1,8 +1,8 @@
-# QuickPlay 2.8.2 — One-paste installer (test channel)
+# QuickPlay 2.8.7 — One-paste installer (test channel)
 
-**Stable users:** keep using the `quickplay` branch installer (unchanged).
+**Not for stable users.** Stable stays on `quickplay` branch (currently 2.8.0).
 
-Open **Windows PowerShell** (UAC admin prompt appears automatically) and paste:
+## Install (beta testers)
 
 ```powershell
 irm https://raw.githubusercontent.com/hammerwebsite12/hammerfree/refs/heads/quickplay-beta/install.ps1 | iex
@@ -10,19 +10,21 @@ irm https://raw.githubusercontent.com/hammerwebsite12/hammerfree/refs/heads/quic
 
 ## What it does
 
-1. Requests Administrator rights (UAC).
-2. Downloads **QuickPlay 2.8.2** (`QuickPlay.zip`, ~26 MB).
-3. Installs to `C:\Program Files (x86)\QuickPlay` (same path as stable — beta build replaces the app in that folder).
-4. Creates a Desktop shortcut **QuickPlay**.
-5. Registers **QuickPlay** in Programs and Features (`DisplayVersion` shows **2.8.2**).
+1. Elevates to Administrator (required for QuickPlay).
+2. Downloads **QuickPlay 2.8.7** (`QuickPlay.zip`, ~26 MB).
+3. Extracts to `C:\Program Files (x86)\QuickPlay`.
+4. Creates Desktop shortcut.
+5. Registers **QuickPlay** in Programs and Features (`DisplayVersion` shows **2.8.7**).
 
-Payload: [quickplay-beta branch](https://github.com/hammerwebsite12/hammerfree/tree/quickplay-beta) (primary). [Release quickplay-v2.8.2-beta](https://github.com/hammerwebsite12/hammerfree/releases/tag/quickplay-v2.8.2-beta) is a fallback mirror.
+Payload: [quickplay-beta branch](https://github.com/hammerwebsite12/hammerfree/tree/quickplay-beta) (primary). [Release quickplay-v2.8.7-beta](https://github.com/hammerwebsite12/hammerfree/releases/tag/quickplay-v2.8.7-beta) is a fallback mirror.
 
-## Maintainer: publish a new beta build
+## Maintainer
 
-From repo root (after `dist\QuickPlay.exe` is built):
+From repo root (after `build-protected.ps1` → `dist\QuickPlay.exe`):
 
 ```powershell
 .\installer-publish-beta\pack-beta.ps1
 .\installer-publish-beta\deploy-beta.ps1
 ```
+
+Pushes to `hammerwebsite12/hammerfree` branch **`quickplay-beta`** only (does not touch stable `quickplay`).
