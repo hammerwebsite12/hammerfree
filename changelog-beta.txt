@@ -1,7 +1,7 @@
-QuickPlay 2.8.7 installer (quickplay-beta channel)
+QuickPlay 2.8.9 installer (quickplay-beta channel)
 
+- Built-in VPN honors full-tunnel Singapore 2 / United States (same as the WireGuard app) so catalog, verification, and downloads share one IP
 - Server 2: 2.8.2 download route fixes (same egress as gate, tolerant CDN probe, Referer, HTML rejection)
 - Server 2 gate (2.8.7): verification window only when Settings option is ON; generic dock status when OFF; no native Turnstile auto-click
-- VPN: bundled Singapore (primary) + United States; ordered auto-fallback when store unreachable
 
-Source: dvahana2424-web/playzipdl branch quickplay-2.8.7-windows
+Source: dvahana2424-web/playzipdl branch quickplay-2.8.9-windows

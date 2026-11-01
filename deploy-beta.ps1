@@ -1,4 +1,4 @@
-# Publish QuickPlay 2.8.7 installer to hammerwebsite12/hammerfree (quickplay-beta branch + release)
+# Publish QuickPlay 2.8.9 installer to hammerwebsite12/hammerfree (quickplay-beta branch + release)
 # Does NOT modify the stable quickplay branch.
 # Requires: gh auth login with push access to hammerwebsite12/hammerfree
 $ErrorActionPreference = 'Stop'
@@ -68,7 +68,7 @@ $ErrorActionPreference = 'Continue'
 gh release view $releaseTag --repo hammerwebsite12/hammerfree 2>$null | Out-Null
 $releaseExists = ($LASTEXITCODE -eq 0)
 $ErrorActionPreference = $prevEap
-$notes = "QuickPlay 2.8.7 beta test installer. One-paste: refs/heads/quickplay-beta/install.ps1 (stable remains quickplay branch)."
+$notes = "QuickPlay 2.8.9 beta test installer. One-paste: refs/heads/quickplay-beta/install.ps1 (stable remains quickplay branch)."
 if ($releaseExists) {
     gh release upload $releaseTag QuickPlay.zip --repo hammerwebsite12/hammerfree --clobber
 } else {
