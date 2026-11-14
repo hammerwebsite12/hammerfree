@@ -1,7 +1,8 @@
-QuickPlay 2.8.9 installer (quickplay-beta channel)
+QuickPlay 2.9.2 installer (quickplay-beta channel)
 
-- Built-in VPN honors full-tunnel Singapore 2 / United States (same as the WireGuard app) so catalog, verification, and downloads share one IP
-- Server 2: 2.8.2 download route fixes (same egress as gate, tolerant CDN probe, Referer, HTML rejection)
-- Server 2 gate (2.8.7): verification window only when Settings option is ON; generic dock status when OFF; no native Turnstile auto-click
+- Server 2 downloads work again: Anker 403s generate-download-url when the body is the old development-mode token or when X-Requested-With is set. The client now posts an empty JSON body with the same headers as the website.
+- Cloud resolver still returns client_resolve when Cloudflare cannot mint the link; the PC finishes the gate.
+- Show Server 2 verification page ON keeps the verification window on-screen.
+- Built-in VPN still honors full-tunnel Singapore 2 / United States (2.8.9).
 
-Source: dvahana2424-web/playzipdl branch quickplay-2.8.9-windows
+Source: dvahana2424-web/playzipdl branch quickplay-2.9.2-windows

@@ -1,4 +1,4 @@
-# QuickPlay 2.8.9 — One-paste installer (test channel)
+# QuickPlay 2.9.2 — One-paste installer (test channel)
 
 **Not for stable users.** Stable stays on `quickplay` branch (currently 2.8.0).
 
@@ -11,12 +11,12 @@ irm https://raw.githubusercontent.com/hammerwebsite12/hammerfree/refs/heads/quic
 ## What it does
 
 1. Elevates to Administrator (required for QuickPlay).
-2. Downloads **QuickPlay 2.8.9** (`QuickPlay.zip`, ~26 MB).
+2. Downloads **QuickPlay 2.9.2** (`QuickPlay.zip`, ~26 MB).
 3. Extracts to `C:\Program Files (x86)\QuickPlay`.
 4. Creates Desktop shortcut.
-5. Registers **QuickPlay** in Programs and Features (`DisplayVersion` shows **2.8.9**).
+5. Registers **QuickPlay** in Programs and Features (`DisplayVersion` shows **2.9.2**).
 
-Payload: [quickplay-beta branch](https://github.com/hammerwebsite12/hammerfree/tree/quickplay-beta) (primary). [Release quickplay-v2.8.9-beta](https://github.com/hammerwebsite12/hammerfree/releases/tag/quickplay-v2.8.9-beta) is a fallback mirror.
+Payload: [quickplay-beta branch](https://github.com/hammerwebsite12/hammerfree/tree/quickplay-beta) (primary). [Release quickplay-v2.9.2-beta](https://github.com/hammerwebsite12/hammerfree/releases/tag/quickplay-v2.9.2-beta) is a fallback mirror.
 
 ## Maintainer
 
